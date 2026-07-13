@@ -48,11 +48,6 @@ def chroma_key_frame(
 ) -> Image.Image:
     """Remove key-color background from a single RGBA frame."""
     arr = np.array(img.convert('RGBA'))
-    h, w = arr.shape[:2]
-    # Remove watermark in bottom-right corner (small region only)
-    # Nuke everything in bottom 10%, right 20%; API watermarks usually live here.
-    wr_y, wr_x = int(h * 0.90), int(w * 0.80)
-    arr[wr_y:, wr_x:, 3] = 0
     r, g, b, a = arr[:,:,0], arr[:,:,1], arr[:,:,2], arr[:,:,3]
 
     # Convert to float HSV manually (avoid opencv dependency)

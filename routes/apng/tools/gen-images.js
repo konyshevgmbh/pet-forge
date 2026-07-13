@@ -62,9 +62,10 @@ async function saveFirstImageResult(result, outputPath) {
     }
   }
   const jsonPath = outputPath.replace(/\.[^.]+$/, '') + '-raw.json';
+  fs.mkdirSync(path.dirname(path.resolve(jsonPath)), { recursive: true });
   fs.writeFileSync(jsonPath, JSON.stringify(result, null, 2));
   console.log(`  ⚠ 未找到图片数据，已保存原始响应: ${jsonPath}`);
-  return jsonPath;
+  return null;
 }
 
 const apiChoice = getArg('--api', 'doubao');
@@ -78,13 +79,18 @@ if (directPrompt) {
   console.log(`\n🎨 生成参考图: ${outputPath}`);
   console.log('   API: doubao\n');
 
-  const result = await doubaoGenerateImage(directPrompt, {
-    model: modelOpt || undefined,
-  });
-  const saved = await saveFirstImageResult(result, outputPath);
-
-  console.log(`\n✅ 完成: ${saved}\n`);
-  process.exit(0);
+  try {
+    const result = await doubaoGenerateImage(directPrompt, {
+      model: modelOpt || undefined,
+    });
+    const saved = await saveFirstImageResult(result, outputPath);
+    if (!saved) process.exit(1);
+    console.log(`\n✅ 完成: ${saved}\n`);
+    process.exit(0);
+  } catch (err) {
+    console.error(`  ❌ 生图失败: ${err.message}`);
+    process.exit(1);
+  }
 }
 
 const animKey = args[0];
@@ -102,7 +108,6 @@ if (!Number.isInteger(count) || count < 1) {
 // ── Output setup ─────────────────────────────────────────
 
 const outDir = path.join(__dirname, 'output', animKey);
-fs.mkdirSync(outDir, { recursive: true });
 
 const prompt = buildPrompt(animKey);
 const anim = ANIMATIONS[animKey];
@@ -114,6 +119,7 @@ console.log(`   输出目录: ${outDir}\n`);
 // ── Generate ─────────────────────────────────────────────
 
 const results = [];
+let failures = 0;
 
 console.log('── Doubao / Volcengine image generation ──');
 for (let i = 0; i < count; i++) {
@@ -124,6 +130,7 @@ for (let i = 0; i < count; i++) {
       model: modelOpt || undefined,
     });
 
+    let savedThisAttempt = 0;
     if (result.data && Array.isArray(result.data)) {
       for (let j = 0; j < result.data.length; j++) {
         const item = result.data[j];
@@ -131,24 +138,32 @@ for (let i = 0; i < count; i++) {
         const outPath = path.join(outDir, filename);
         const imgData = item.url || item.b64_json;
         if (imgData) {
+          fs.mkdirSync(outDir, { recursive: true });
           await saveImage(imgData, outPath);
           results.push(outPath);
+          savedThisAttempt++;
         }
       }
-    } else {
+    }
+    if (savedThisAttempt === 0) {
       const jsonPath = path.join(outDir, `${tag}-raw.json`);
+      fs.mkdirSync(outDir, { recursive: true });
       fs.writeFileSync(jsonPath, JSON.stringify(result, null, 2));
       console.log(`  ⚠ 未找到图片数据，已保存原始响应: ${jsonPath}`);
-      results.push(jsonPath);
+      failures++;
     }
   } catch (err) {
     console.error(`  ❌ 生图失败: ${err.message}`);
+    failures++;
   }
 }
 
 // ── Summary ──────────────────────────────────────────────
 
 console.log(`\n${'─'.repeat(50)}`);
-console.log(`✅ 完成！共生成 ${results.length} 个文件:`);
+if (failures || results.length === 0) process.exitCode = 1;
+console.log(`${process.exitCode ? '❌ 未完成' : '✅ 完成'}！共生成 ${results.length} 张图片:`);
 results.forEach(f => console.log(`   ${f}`));
-console.log(`\n去 ${outDir} 挑选你喜欢的图片，然后用 gen-video.js 生成视频。\n`);
+if (results.length) {
+  console.log(`\n去 ${outDir} 挑选你喜欢的图片，然后用 gen-video.js 生成视频。\n`);
+}

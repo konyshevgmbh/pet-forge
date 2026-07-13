@@ -23,6 +23,8 @@ def parse_args():
 def check_dir(frames_dir: Path, pattern: str, dark_max: int, alpha_min: int, ratio_limit: float):
     frames = sorted(glob.glob(str(frames_dir / pattern)))
     print(f"Checking {len(frames)} frames in {frames_dir}...")
+    if not frames:
+        raise SystemExit(f"No frames matched {frames_dir / pattern}")
     problem = []
 
     for i, frame_path in enumerate(frames):
@@ -48,6 +50,8 @@ def main():
     for frames_dir in args.frames_dir:
         total += len(check_dir(Path(frames_dir), args.pattern, args.dark_max, args.alpha_min, args.ratio))
     print(f"\nDone: {total} problem frame(s)")
+    if total:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

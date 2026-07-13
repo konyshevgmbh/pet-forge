@@ -33,6 +33,8 @@ prompts/   gen-images.js  gen-video.js           chroma_key.py
 
 ## 安装
 
+需要 Node.js 18 或更高版本。
+
 ### 1. Node 依赖
 
 ```powershell
@@ -92,6 +94,7 @@ node gen-video.js idle-yawn --image reference/main-ref.png --last-frame referenc
 ```
 
 `--last-frame` 是**尾帧锚定**——告诉 AI 视频结束时的形态。这是保证循环无缝的关键技巧。
+省略时，循环和回归型状态会自动复用 `--image`；过渡型状态必须显式提供不同的尾帧。
 
 ### 第 3 步：批量生成（带限流）
 
@@ -142,6 +145,8 @@ py fix_gray_bleed.py output/idle-yawn/frames output/idle-yawn/frames-fixed
 py check_dark.py output/idle-yawn/frames-fixed
 ```
 
+发现问题帧时命令会返回退出码 `1`，可直接用于自动验证。
+
 如果要重建 APNG（修压缩 / 改帧率）：
 
 ```powershell
@@ -162,7 +167,7 @@ py rebuild_apng.py output/idle-yawn/frames-fixed output/idle-yawn/result.apng --
 | `preview.html` | 本地预览页（拖入 APNG/视频/图片即看） |
 | `chroma_key.py` | 绿幕抠图 → APNG（`--plays 1` 单次, `--plays 0` 无限） |
 | `check_dark.py` | 检查 PNG 帧目录是否有暗色泄漏 |
-| `fix_gray_bleed.py` | 修 PNG 帧目录中的绿边/灰边 |
+| `fix_gray_bleed.py` | 只清理透明边缘相邻的半透明冷灰溢出，保留不透明角色灰色 |
 | `rebuild_apng.py` | 从 PNG 帧目录重建 APNG（修压缩/改帧率） |
 
 ---

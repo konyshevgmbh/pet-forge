@@ -23,7 +23,7 @@
 
 ### 完整状态库（25 个交付状态）
 
-> 模板里包含 24 个直接生成 prompt 条目 + 1 个可由剪辑或独立生成得到的 `mini-peek` 交付状态。
+> 模板包含 25 个 prompt 条目；`mini-peek` 也可以由剪辑得到。
 
 ```
 [core states]                                  类型
@@ -115,7 +115,7 @@ mini 入场链:
 {
   "name": "your-pet-name",
   "states": {
-    "idle": "states/idle.svg.html",         // SVG 路线 = .svg.html, APNG 路线 = .apng
+    "idle": "states/idle.svg.html",
     "typing": "states/typing.svg.html",
     "thinking": "states/thinking.svg.html",
     "sleeping": "states/sleeping.svg.html",
