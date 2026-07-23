@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { ANIMATIONS, buildGenVideoCommand } from '../routes/apng/prompts/template.js';
+import { buildChromaInvocation } from '../routes/apng/tools/lib/chroma-command.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const tools = join(root, 'routes', 'apng', 'tools');
@@ -27,7 +28,32 @@ for (const [key, anim] of Object.entries(ANIMATIONS)) {
   const command = buildGenVideoCommand(key, refs);
   const expectedLastFrame = anim.anchor === 'same' ? refs[anim.refKey] : refs[anim.lastKey];
   assert.ok(command.includes(`--last-frame ${expectedLastFrame}`), `${key} has the wrong last-frame anchor`);
+  const chromaInvocation = buildChromaInvocation({
+    platform: 'darwin',
+    scriptPath: 'chroma_key.py',
+    videoPath: `${key}.mp4`,
+    apngPath: `${key}.apng`,
+    loop: anim.loop,
+  });
+  assert.deepEqual(chromaInvocation, {
+    command: 'python3',
+    args: ['chroma_key.py', `${key}.mp4`, `${key}.apng`, '--plays', anim.loop ? '0' : '1'],
+  });
 }
+
+assert.deepEqual(
+  buildChromaInvocation({
+    platform: 'win32',
+    scriptPath: 'chroma_key.py',
+    videoPath: 'input.mp4',
+    apngPath: 'output.apng',
+    loop: false,
+  }),
+  {
+    command: 'py',
+    args: ['-3', 'chroma_key.py', 'input.mp4', 'output.apng', '--plays', '1'],
+  },
+);
 
 const cleanEnv = { ...process.env, DOUBAO_API_KEY: '', DOUBAO_BASE_URL: '' };
 function expectExit(args, expected, outputPattern) {

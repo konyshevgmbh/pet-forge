@@ -14,6 +14,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { doubaoGenerateVideo, downloadBuffer } from './lib/api.js';
+import { buildChromaInvocation } from './lib/chroma-command.js';
 import { ANIMATIONS, buildPrompt } from './prompts.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -182,11 +183,13 @@ if (!skipChroma && results.length > 0) {
       const apngPath = videoPath.replace('.mp4', '.apng');
       try {
         console.log(`  处理: ${videoPath}`);
-        const python = process.platform === 'win32' ? 'py' : 'python3';
-        const pythonArgs = process.platform === 'win32'
-          ? ['-3', chromaScript, videoPath, apngPath]
-          : [chromaScript, videoPath, apngPath];
-        const processed = spawnSync(python, pythonArgs, {
+        const invocation = buildChromaInvocation({
+          scriptPath: chromaScript,
+          videoPath,
+          apngPath,
+          loop: anim.loop,
+        });
+        const processed = spawnSync(invocation.command, invocation.args, {
           stdio: 'inherit',
           cwd: __dirname,
         });
