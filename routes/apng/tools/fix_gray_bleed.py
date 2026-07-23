@@ -37,12 +37,20 @@ def fix_frame(frame_path: str, output_path: Path, height: int, max_colors: int) 
     delta = cmax - cmin
     brightness = cmax
 
-    is_visible = a > 128
-    is_gray = (delta < 35) & (brightness > 60) & (brightness < 200) & is_visible
+    is_translucent = (a > 0) & (a < 255)
+    is_gray = (delta < 35) & (brightness > 60) & (brightness < 200) & is_translucent
 
-    # Cat/fur highlights are usually warm. Cool mid-gray edge pixels are likely background bleed.
+    # Only touch cool gray pixels directly beside transparency. Applying the
+    # color heuristic to the whole frame destroys legitimate gray characters.
+    transparent = a <= 128
+    padded = np.pad(transparent, 1, constant_values=False)
+    near_transparent = (
+        padded[:-2, :-2] | padded[:-2, 1:-1] | padded[:-2, 2:] |
+        padded[1:-1, :-2] | padded[1:-1, 2:] |
+        padded[2:, :-2] | padded[2:, 1:-1] | padded[2:, 2:]
+    )
     warm_ratio = (r + 1) / (b + 1)
-    is_cool_gray = is_gray & (warm_ratio < 1.15)
+    is_cool_gray = is_gray & (warm_ratio < 1.15) & near_transparent
 
     fixed_pixels = int(np.sum(is_cool_gray))
     if fixed_pixels:

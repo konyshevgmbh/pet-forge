@@ -4,7 +4,11 @@
   "private": true,
   "type": "module",
   "description": "pet-forge APNG animation generation and post-processing tools",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
+    "test": "node ../../../scripts/validate.mjs",
     "test-api": "node test-api.js",
     "gen:images": "node gen-images.js",
     "gen:video": "node gen-video.js",

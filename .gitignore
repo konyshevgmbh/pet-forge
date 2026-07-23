@@ -3,6 +3,7 @@ node_modules/
 *.pyc
 __pycache__/
 .playwright-mcp/
+/output/
 
 routes/apng/tools/output/
 routes/apng/tools/reference/

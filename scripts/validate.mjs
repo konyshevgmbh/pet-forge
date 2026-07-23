@@ -1,0 +1,61 @@
+import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+import { ANIMATIONS, buildGenVideoCommand } from '../routes/apng/prompts/template.js';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const tools = join(root, 'routes', 'apng', 'tools');
+
+const skill = readFileSync(join(root, 'SKILL.md'), 'utf8');
+assert.match(skill, /^---\r?\nname: pet-forge\r?\ndescription: .+\r?\n---\r?\n/);
+
+assert.equal(Object.keys(ANIMATIONS).length, 25);
+const refs = {};
+for (const anim of Object.values(ANIMATIONS)) {
+  assert.equal(typeof anim.loop, 'boolean');
+  assert.ok(anim.anchor === 'same' || anim.anchor === 'different');
+  if (anim.loop) assert.equal(anim.anchor, 'same');
+  refs[anim.refKey] = `reference/${anim.refKey}.png`;
+  if (anim.lastKey) refs[anim.lastKey] = `reference/${anim.lastKey}.png`;
+}
+
+for (const [key, anim] of Object.entries(ANIMATIONS)) {
+  const command = buildGenVideoCommand(key, refs);
+  const expectedLastFrame = anim.anchor === 'same' ? refs[anim.refKey] : refs[anim.lastKey];
+  assert.ok(command.includes(`--last-frame ${expectedLastFrame}`), `${key} has the wrong last-frame anchor`);
+}
+
+const cleanEnv = { ...process.env, DOUBAO_API_KEY: '', DOUBAO_BASE_URL: '' };
+function expectExit(args, expected, outputPattern) {
+  const result = spawnSync(process.execPath, args, { cwd: tools, env: cleanEnv, encoding: 'utf8' });
+  assert.equal(result.status, expected, `${args.join(' ')}\n${result.stdout}\n${result.stderr}`);
+  if (outputPattern) assert.match(`${result.stdout}\n${result.stderr}`, outputPattern);
+}
+
+const sampleImage = join(root, 'examples', 'svg-gpt-pear', 'source.png');
+expectExit(['gen-video.js'], 0);
+expectExit(['gen-images.js', '--list'], 0);
+expectExit(['test-api.js'], 1);
+expectExit(['gen-video.js', 'idle-dozing', '--no-first-frame', '--no-chroma'], 1, /必须同时提供 --last-frame/);
+expectExit(['gen-video.js', 'idle-dozing', '--image', sampleImage, '--no-chroma'], 1, /DOUBAO_API_KEY 未设置/);
+expectExit(
+  ['gen-video.js', 'collapse-sleep', '--image', sampleImage, '--last-frame', sampleImage, '--no-chroma'],
+  1,
+  /必须使用不同文件/,
+);
+expectExit(['gen-images.js', 'idle-dozing', '--count', '1'], 1);
+
+const temp = mkdtempSync(join(tmpdir(), 'pet-forge-'));
+try {
+  const config = join(temp, 'batch.json');
+  writeFileSync(config, JSON.stringify({ delayMs: 0, jobs: [{ key: 'idle-dozing', image: sampleImage, noChroma: true }] }));
+  expectExit(['batch-gen.js', '--config', config], 1);
+} finally {
+  rmSync(temp, { recursive: true, force: true });
+}
+
+console.log('Repository validation passed.');

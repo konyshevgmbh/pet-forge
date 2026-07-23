@@ -1,3 +1,8 @@
+---
+name: pet-forge
+description: Create, repair, validate, and package self-contained SVG or APNG desktop pets using pet-forge templates, animation conventions, state mappings, and generation tools. Use when the user asks to make a desktop pet, animate a character for idle or agent states, choose between SVG and APNG, convert a reference image into a pet asset, or validate and package a multi-state pet.
+---
+
 # pet-forge skill —— 触发条件 + 调用流程
 
 > 给 AI coding agent 看的 skill 接入文档。当用户说"我想做桌宠"时，agent 应该按本文件的指引响应。

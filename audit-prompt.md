@@ -28,6 +28,7 @@ Audit the repository as a standalone open-source toolkit for building SVG/APNG d
    - Copied or adapted code keeps appropriate attribution and license notes.
 
 5. **Tool entry points**
+   - `npm test --prefix routes/apng/tools` passes without making external API calls.
    - `node gen-video.js` prints help without missing modules.
    - `node gen-images.js --list` prints the state list.
    - `node test-api.js` handles missing API keys gracefully.
