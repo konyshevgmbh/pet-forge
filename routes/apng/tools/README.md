@@ -95,6 +95,7 @@ node gen-video.js idle-yawn --image reference/main-ref.png --last-frame referenc
 
 `--last-frame` 是**尾帧锚定**——告诉 AI 视频结束时的形态。这是保证循环无缝的关键技巧。
 省略时，循环和回归型状态会自动复用 `--image`；过渡型状态必须显式提供不同的尾帧。
+自动后处理会读取状态的 `loop` 字段：循环状态生成无限播放 APNG，一次性状态只播放一遍。
 
 ### 第 3 步：批量生成（带限流）
 
