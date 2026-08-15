@@ -1,73 +1,73 @@
-# SVG 验证 runbook
+# SVG validation runbook
 
-> 静帧截图不算验收。SVG 桌宠至少要过结构、脚本、嵌入、循环和目标端验证。
+> A static screenshot doesn't count as acceptance. An SVG desktop pet needs to pass structural, script, embedding, loop, and target-side validation at minimum.
 
-## 1. 结构先过
+## 1. Structure first
 
-先确认文件能被解析：
+Confirm the file can be parsed first:
 
-- 裸 `.svg`：用 XML/SVG parser 检查标签闭合、命名空间、重复 `id`；
-- `.svg.html`：用浏览器或 HTML parser 打开，确认 DOM 里存在目标 `<svg>`；
-- 所有可动画部件有稳定 `id`；
-- `viewBox` 能完整容纳动作幅度。
+- Bare `.svg`: check tag closure, namespaces, and duplicate `id`s with an XML/SVG parser;
+- `.svg.html`: open it with a browser or HTML parser, confirm the target `<svg>` exists in the DOM;
+- Every animatable part has a stable `id`;
+- The `viewBox` fully contains the range of motion.
 
-如果结构都不稳，不要先调动画。
+If the structure isn't stable, don't start tuning the animation yet.
 
-## 2. 自包含检查
+## 2. Self-containment check
 
-交付状态应该能独立运行。检查这些风险：
+The delivered state should be able to run on its own. Check for these risks:
 
-- 外部 `<script src>` / `<link rel="stylesheet">`；
-- 跨文件 `<use href="other.svg#part">`；
-- 必须联网才能加载的 image/font；
-- runtime 不提供时会失败的 `fetch()`；
-- 只在本机绝对路径存在的资源。
+- External `<script src>` / `<link rel="stylesheet">`;
+- A cross-file `<use href="other.svg#part">`;
+- An image/font that requires a network connection to load;
+- A `fetch()` that will fail when the runtime doesn't provide it;
+- A resource that only exists at an absolute local path.
 
-开发期 tuner 可以有外部依赖；canonical state 不可以。
+The dev-phase tuner can have external dependencies; the canonical state cannot.
 
-## 3. 脚本可解析
+## 3. The script is parseable
 
-含脚本的状态先做最小脚本检查：
+For a state that includes a script, do a minimal script check first:
 
-- 浏览器 console 无 syntax error；
-- 初始化函数可重复执行或有明确 guard；
-- 没有未捕获 promise rejection；
-- host bridge 缺失时能降级到默认动画；
-- duration/readiness probe 返回稳定值。
+- No syntax errors in the browser console;
+- The init function can be run repeatedly, or has an explicit guard;
+- No uncaught promise rejections;
+- It degrades to the default animation when the host bridge is missing;
+- The duration/readiness probe returns a stable value.
 
-这一步只证明“脚本能跑”，不证明“动画好看”。
+This step only proves "the script runs" — not "the animation looks good."
 
-## 4. 选择正确预览入口
+## 4. Choose the right preview entry point
 
-不同文件形态用不同入口：
+Different file forms need different entry points:
 
-- `.svg.html`：直接用浏览器或 runtime 加载；
-- 纯 `.svg`：可直接打开，但脚本、外链和安全策略可能和 runtime 不同；
-- scripted SVG：用 `<object>`、iframe/webview 或内联预览壳验证；
-- 需要本地资源的草稿：起一个本地静态 server，不要依赖 `file://` 行为。
+- `.svg.html`: load it directly in a browser or the runtime;
+- Plain `.svg`: can be opened directly, but scripts, external links, and security policy may differ from the runtime;
+- Scripted SVG: verify with `<object>`, an iframe/webview, or an inline preview shell;
+- A draft that needs local resources: spin up a local static server, don't rely on `file://` behavior.
 
-如果直开文件和 runtime 表现不同，以 runtime 或与 runtime 等价的嵌入方式为准。
+If opening the file directly behaves differently from the runtime, trust the runtime or an embedding method equivalent to it.
 
-## 5. 循环看 30 秒以上
+## 5. Watch the loop for 30+ seconds
 
-播放时至少检查：
+While it plays, check at least:
 
-- 0% / 100% 是否完全闭环；
-- 长周期元素是否越漂越远；
-- blink、breath、secondary motion 是否全部同步抽搐；
-- pointer-look 等脚本动画是否抖动；
-- 关键识别部件是否被裁切、遮挡或滤镜污染。
+- Whether 0% / 100% form a fully closed loop;
+- Whether long-period elements keep drifting further away;
+- Whether blink, breath, and secondary motion are all twitching in sync;
+- Whether scripted animation like pointer-look jitters;
+- Whether key identifying parts get clipped, occluded, or polluted by a filter.
 
-单帧好看只能说明造型可用，不能说明状态可交付。
+A good single frame only proves the design is usable — it doesn't prove the state is ready to ship.
 
-## 6. 目标端复验
+## 6. Re-verify on the target
 
-最后在用户实际会看到的目标里复验：
+Finally, re-verify in the target the user will actually see:
 
-- runtime 映射是否指向正确文件；
-- showcase / demo 是否引用 canonical state；
-- HTTP 服务时 content type 是否合理；
-- preview URL 和 production URL 是否为同一版本；
-- 目标浏览器或 WebView 是否有 filter、mask、image 栅格化差异。
+- Does the runtime mapping point to the correct file;
+- Does the showcase/demo reference the canonical state;
+- Is the content type reasonable when served over HTTP;
+- Are the preview URL and production URL the same version;
+- Does the target browser or WebView have filter/mask/image rasterization differences.
 
-问题出现时先分层：源文件、嵌入方式、runtime 映射、部署缓存、目标端渲染。不要把所有现象都归因到动画本身。
+When a problem shows up, separate it by layer first: source file, embedding method, runtime mapping, deployment cache, target-side rendering. Don't attribute every symptom to the animation itself.

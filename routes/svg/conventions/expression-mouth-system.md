@@ -1,63 +1,63 @@
-# 表情和嘴巴系统约定
+# Expression and mouth system conventions
 
-> 表情不是换几张脸；开口嘴也不是一块红色贴片。先建表情路径板，再用同一套嘴巴 rig 处理开口和收口。没有嘴巴的角色只使用眼睛、眉毛、腮红或表情符号部分，跳过 mouth rig。嘴巴属于脸部运动平面，见 `head-motion-axis.md`。
+> An expression isn't a swap between a few different faces; an open mouth isn't a red patch either. Build an expression path board first, then handle opening/closing with the same mouth rig. Characters with no mouth just use eyes, eyebrows, blush, or emoji-style symbols instead, and skip the mouth rig entirely. The mouth belongs to the facial motion plane — see `head-motion-axis.md`.
 
-## 基础表情路径板
+## The base expression path board
 
-复杂角色先建一张基础表情路径板，再把状态动画接上去。板上固定眼睛、眉毛、鼻子、嘴和腮红的**语义位置**——常见表情（默认 / 微笑 / 开心 / 生气 / 惊讶 / 困倦等）都从这张板派生，不要每个状态自建一张脸。
+For a complex character, build a base expression path board first, then hook the state animations up to it. The board fixes the **semantic positions** of the eyes, eyebrows, nose, mouth, and blush — the common expressions (default / smile / happy / angry / surprised / sleepy, etc.) are all derived from this board; don't build a new face from scratch for every state.
 
-板的作用不是一次画完所有表情，而是给后续 typing、drag、开心反馈等状态一个共同的语义合同；具体状态只在合同上改局部参数。否则切状态时五官大小、鼻嘴距离和腮红位置会变来变去，像换了一张脸。
+The board's purpose isn't to draw every expression up front — it's to give later states like typing, drag, and happy feedback a shared semantic contract; a specific state only tweaks local parameters on top of that contract. Otherwise, switching states will make the feature sizes, nose-to-mouth distance, and blush position shift around, and it'll look like a different face.
 
-## 嘴巴不是红色贴片
+## The mouth is not a red patch
 
-开口嘴不要直接放一个红色或深色形状盖在脸上。稳定结构是：
+Don't just drop a red or dark shape onto the face for an open mouth. A stable structure is:
 
-- 原嘴线：可见边界，负责识别（如 W 形嘴线）；
-- 开口裁切（opening clip）：不可见的开口窗口，决定嘴张多大；
-- 口腔内部（interior）：被裁切的暗面和浅色部，可以比窗口大，只通过 clip 露出；
-- 可见嘴线：始终压在上层的嘴线和鼻嘴连接线。
+- Original mouth line: the visible boundary, responsible for recognizability (e.g. a W-shaped mouth line);
+- Opening clip: an invisible opening window that determines how wide the mouth opens;
+- Mouth interior: the shaded and light-colored parts that get clipped, which can be larger than the window and only show through the clip;
+- Visible mouth line: the mouth line and the nose-mouth connector, always layered on top.
 
-开口的形状由 clip 决定，内部颜色只是被裁切出来的内容。画一个深色椭圆盖上去，嘴就会和原嘴线、鼻子、脸部运动脱节，像贴片。
+The shape of the opening is determined by the clip; the interior color is just content being clipped out of it. Drawing a dark oval and dropping it on top will decouple the mouth from the original mouth line, the nose, and the facial motion — it'll read as a patch.
 
-## 开口机制同源
+## The opening mechanism must share one origin
 
-开心嘴、惊讶嘴不应各自重画一套独立嘴巴，而应共用同一个开口窗口概念：
+A happy mouth and a surprised mouth shouldn't each redraw their own independent mouth — they should share the same opening-window concept:
 
-- 开心嘴把窗口压扁、拉宽或上扬；
-- 惊讶嘴把窗口变圆、变高或更居中；
-- 原嘴线和鼻嘴关系仍来自同一张表情板。
+- A happy mouth flattens, widens, or curves the window upward;
+- A surprised mouth makes the window rounder, taller, or more centered;
+- The original mouth line and its relationship to the nose still come from the same expression board.
 
-不同表情可以不同，**开口机制要同源**；否则两个状态切换时角色像换了一张脸。轻量开心反馈等衍生状态，优先复用已有开口 rig，只改开口幅度、收口量和节奏，不要为它重画一个专用嘴——新嘴会引入另一套鼻嘴关系、线宽和 clip 规则，状态切换更容易跳。
+Different expressions can look different, but **the opening mechanism must share one origin**; otherwise switching between two states will make the character look like it swapped faces. For lightweight derived states like a quick happy reaction, prefer reusing the existing opening rig and only changing the opening amount, closing amount, and rhythm — don't redraw a dedicated mouth for it. A new mouth would bring in a different nose-mouth relationship, line width, and clip rules, making state switches more likely to snap.
 
-## 小嘴是收口不是缩放
+## A small mouth is a closing, not a scale
 
-thinking、小声、犹豫这类嘴型，常是原嘴线的**收口**，不是整张嘴缩小。做法：保留原嘴线曲线，用 `stroke-dasharray` / `stroke-dashoffset` 或圆头遮罩隐藏两端，让可见中段呼吸式收放，保持鼻嘴连接关系。
+Mouth shapes for thinking, speaking quietly, or hesitating are often a **closing** of the original mouth line, not a shrink of the whole mouth. Approach: keep the original mouth-line curve, and use `stroke-dasharray` / `stroke-dashoffset` or a rounded mask to hide the two ends, letting the visible middle segment breathe open and closed, while keeping the nose-mouth relationship intact.
 
-直接 scale mouth group 会让线宽、圆角和鼻嘴距离一起变，像换了张嘴。只有语义真的变成另一种嘴型时才换 path。
+Directly scaling the mouth group changes the line width, corner rounding, and nose-mouth distance all together — it'll look like a different mouth. Only switch to a different path when the semantics genuinely become a different mouth shape.
 
-## 左右收口用软边
+## Use a soft edge for left/right closing
 
-任务完成类开心嘴常需要左右收口，不只是改开口高度。在开口窗口之外再加一层左右收合的 clip，控制嘴角从两侧合拢。
+A happy mouth for "task complete" type states often needs a left/right closing, not just a change in opening height. Add another layer of left/right-closing clip on top of the opening window, controlling the mouth corners closing in from both sides.
 
-收口 clip 不要用硬矩形直切，左右应有圆角或软边，否则嘴会变成机械开合门。收口量用独立参数控制，不要和嘴巴轮廓半宽之类的几何量混用，否则门会从错误位置关、嘴角突然变硬。
+Don't use a hard rectangular cut for the closing clip — the left/right sides should have rounded corners or a soft edge, otherwise the mouth will look like a mechanical sliding door. Control the closing amount with an independent parameter — don't mix it with a geometric quantity like the mouth outline's half-width, or the door will close from the wrong position and the corners will suddenly go stiff.
 
-## 嘴巴属于脸部运动平面
+## The mouth belongs to the facial motion plane
 
-嘴巴 rig 不是孤立 UI 组件。只要角色有转头、抬头、低头或 pointer-look，嘴巴、鼻子和鼻嘴连接线必须跟随脸部平面：开口窗口跟随当前嘴线位置，interior 可在窗口内局部动画但不能脱离脸部坐标，左右收口的 clip 也随脸一起变换。
+The mouth rig isn't an isolated UI component. As long as the character has head turning, looking up, looking down, or pointer-look, the mouth, nose, and nose-mouth connector must follow the facial plane: the opening window follows the current mouth-line position, the interior can animate locally within the window but can't leave the facial coordinate system, and the left/right-closing clip transforms along with the face too.
 
-先算 face pose，再算 mouth pose。
+Compute the face pose first, then compute the mouth pose.
 
-## 验收清单
+## Acceptance checklist
 
-锁定表情和嘴巴前检查：
+Check before locking an expression and mouth:
 
-- 有基础表情路径板，不是每个状态重画一张脸；
-- 开口嘴不是红色 / 深色贴片；
-- 原嘴线仍是可见边界；
-- 开口窗口本身不可见，只负责裁切；
-- 口腔内部可大于窗口，但只能通过 clip 露出；
-- 开心嘴和惊讶嘴来自同一套开口机制；
-- 小嘴保留原嘴线，用收口遮罩或 dash 做变化，不是 scale；
-- 左右收口的 clip 有软边，收口量和轮廓半宽没混用；
-- 衍生开心状态复用已有嘴 rig，不重画专用嘴；
-- 转头 / 抬头 / 低头时，嘴巴、鼻子和腮红跟随同一套 face plane。
+- There's a base expression path board — not a redrawn face for every state;
+- An open mouth isn't a red/dark patch;
+- The original mouth line is still the visible boundary;
+- The opening window itself is invisible, it's only responsible for clipping;
+- The mouth interior can be bigger than the window, but only shows through the clip;
+- The happy mouth and surprised mouth come from the same opening mechanism;
+- A small mouth keeps the original mouth line and changes via a closing mask or dash, not a scale;
+- The left/right-closing clip has soft edges, and the closing amount isn't mixed up with the outline's half-width;
+- Derived happy states reuse the existing mouth rig instead of redrawing a dedicated mouth;
+- When turning the head / looking up / looking down, the mouth, nose, and blush follow the same facial plane.

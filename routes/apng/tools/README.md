@@ -1,73 +1,73 @@
-# APNG 路线工具集
+# APNG route toolset
 
-> 来源：pet-forge 的公开 APNG 路线辅助工具。
-> 用途：用 AI 视频生成 + 绿幕抠图做出 APNG 桌宠动画。
+> Source: pet-forge's public APNG-route helper tools.
+> Purpose: produce APNG desktop-pet animations using AI video generation + green-screen chroma keying.
 
 ---
 
-## 完整管线
+## Full pipeline
 
 ```
-prompt 模板  →  AI 生参考图  →  AI 生视频(尾帧锚定)  →  绿幕抠图  →  APNG
-   ↑              ↓              ↓                    ↓
-prompts/   gen-images.js  gen-video.js           chroma_key.py
-                                                       ↓
-                                              check_dark.py
-                                              fix_gray_bleed.py
-                                              rebuild_apng.py
+prompt template  →  AI-generated reference image  →  AI-generated video (last-frame anchored)  →  chroma key  →  APNG
+   ↑                    ↓                              ↓                                          ↓
+prompts/         gen-images.js                  gen-video.js                              chroma_key.py
+                                                                                                   ↓
+                                                                                          check_dark.py
+                                                                                          fix_gray_bleed.py
+                                                                                          rebuild_apng.py
 ```
 
 ---
 
-## ⚠️ 用本路线前必读
+## ⚠️ Must read before using this route
 
-1. **需要外部 API key**：图像/视频生成服务通常需要账号、额度或付费计划。
-2. **要 Node + Python + ffmpeg**：管线跨两个语言运行时。
-3. **AI 生成不可控**：同一 prompt 跑 5 次出 5 个版本。失败重跑是常态。
-4. **循环无缝难做**：AI 生视频首尾帧大概率对不齐，需要后期剪辑。
-5. **角色一致性需要锚点图**：参考图（reference image）是保证多状态同一角色的关键。
+1. **Needs an external API key**: image/video generation services usually need an account, credits, or a paid plan.
+2. **Needs Node + Python + ffmpeg**: the pipeline runs across two language runtimes.
+3. **AI generation is uncontrollable**: running the same prompt 5 times produces 5 different results. Retrying after a failure is normal.
+4. **A seamless loop is hard to get**: an AI-generated video's start and end frames will most likely not line up perfectly, and need post-editing.
+5. **Character consistency needs an anchor image**: a reference image is the key to keeping the same character across multiple states.
 
-如果以上任何一条让你觉得"算了"，建议改用 **SVG 路线**（routes/svg）。
+If any of the above makes you think "never mind," consider switching to the **SVG route** (routes/svg) instead.
 
 ---
 
-## 安装
+## Installation
 
-需要 Node.js 18 或更高版本。
+Requires Node.js 18 or newer.
 
-### 1. Node 依赖
+### 1. Node dependencies
 
 ```powershell
 cd pet-forge\routes\apng\tools
 npm install
 ```
 
-依赖：
-- `dotenv` —— 读 .env
-- 其他都是 Node 内置 (`fetch`, `fs`)
+Dependencies:
+- `dotenv` — reads .env
+- Everything else is built into Node (`fetch`, `fs`)
 
-### 2. Python 依赖
+### 2. Python dependencies
 
 ```powershell
 py -3 -m pip install Pillow numpy
 ```
 
-### 3. ffmpeg（视频处理）
+### 3. ffmpeg (video processing)
 
-Windows: 从 https://www.gyan.dev/ffmpeg/builds/ 下载，加到 PATH。
+Windows: download from https://www.gyan.dev/ffmpeg/builds/ and add it to PATH.
 
 ```powershell
-ffmpeg -version  # 验证
+ffmpeg -version  # verify
 ```
 
-### 4. 配置 API key
+### 4. Configure the API key
 
 ```powershell
 copy .env.example .env
-# 然后用编辑器填入你的 DOUBAO_API_KEY
+# then fill in your DOUBAO_API_KEY with an editor
 ```
 
-### 5. 测试 API 连通性
+### 5. Test API connectivity
 
 ```powershell
 node test-api.js
@@ -75,35 +75,35 @@ node test-api.js
 
 ---
 
-## 使用流程
+## Usage flow
 
-### 第 1 步：准备参考图（reference image）
+### Step 1: Prepare a reference image
 
-每个角色需要一张**主参考图**（标准首帧 / 尾帧），保证多状态视觉一致。
+Every character needs a **main reference image** (the standard start/end frame), to keep the visuals consistent across states.
 
 ```powershell
 node gen-images.js --prompt "A cute chibi cat, sitting upright, ..." --output reference/main-ref.png
 ```
 
-或者你也可以用网页端图像生成工具手动生成参考图。网页生成更直观，但跨状态一致性可能更难保证。
+Or you can generate the reference image manually with a web-based image-generation tool. Web generation is more visual/interactive, but consistency across states may be harder to guarantee that way.
 
-### 第 2 步：用参考图 + 动作 prompt 生视频
+### Step 2: Generate a video from the reference image + an action prompt
 
 ```powershell
 node gen-video.js idle-yawn --image reference/main-ref.png --last-frame reference/main-ref.png --api doubao
 ```
 
-`--last-frame` 是**尾帧锚定**——告诉 AI 视频结束时的形态。这是保证循环无缝的关键技巧。
-省略时，循环和回归型状态会自动复用 `--image`；过渡型状态必须显式提供不同的尾帧。
-自动后处理会读取状态的 `loop` 字段：循环状态生成无限播放 APNG，一次性状态只播放一遍。
+`--last-frame` is **last-frame anchoring** — it tells the AI what shape the video should be in when it ends. This is the key technique for getting a seamless loop.
+When omitted, loop and return-type states automatically reuse `--image`; transition-type states must explicitly provide a different last frame.
+Automatic post-processing reads the state's `loop` field: loop states generate an infinitely-playing APNG, one-shot states only play once.
 
-### 第 3 步：批量生成（带限流）
+### Step 3: Batch generation (with rate limiting)
 
 ```powershell
 node batch-gen.js --config animations.json
 ```
 
-`animations.json` 列出所有要生成的动画。带 60s 间隔避免 API 限流。最小示例：
+`animations.json` lists all the animations to generate. It uses a 60s interval to avoid API rate limiting. Minimal example:
 
 ```json
 {
@@ -119,36 +119,36 @@ node batch-gen.js --config animations.json
 }
 ```
 
-### 第 4 步：绿幕抠图 → APNG
+### Step 4: Chroma key → APNG
 
-视频用绿幕背景（`#00B140` 或 `#00FF00`）：
+The video uses a green-screen background (`#00B140` or `#00FF00`):
 
 ```powershell
 py chroma_key.py output/idle-yawn/doubao-video.mp4 output/idle-yawn/result.apng
 ```
 
-支持参数：
-- `--plays 0` —— 0 = 无限循环, 1 = 单次播放（默认）
-- `--key-color "#00B140"` —— 绿幕颜色
-- `--tolerance 50` —— 颜色容差
+Supported arguments:
+- `--plays 0` — 0 = loop forever, 1 = play once (default)
+- `--key-color "#00B140"` — the green-screen color
+- `--tolerance 50` — color tolerance
 
-### 第 5 步：APNG 后处理（可选）
+### Step 5: APNG post-processing (optional)
 
-如果绿边抠不干净：
+If the green-edge keying isn't clean:
 
 ```powershell
 py fix_gray_bleed.py output/idle-yawn/frames output/idle-yawn/frames-fixed
 ```
 
-如果暗色部分有泄漏：
+If there's leakage in the dark areas:
 
 ```powershell
 py check_dark.py output/idle-yawn/frames-fixed
 ```
 
-发现问题帧时命令会返回退出码 `1`，可直接用于自动验证。
+The command returns exit code `1` when it finds a problem frame, so it can be used directly for automated validation.
 
-如果要重建 APNG（修压缩 / 改帧率）：
+If you need to rebuild the APNG (fix compression / change the frame rate):
 
 ```powershell
 py rebuild_apng.py output/idle-yawn/frames-fixed output/idle-yawn/result.apng --fps 8 --plays 0
@@ -156,59 +156,59 @@ py rebuild_apng.py output/idle-yawn/frames-fixed output/idle-yawn/result.apng --
 
 ---
 
-## 文件说明
+## File reference
 
-| 文件 | 作用 |
+| File | Purpose |
 |---|---|
-| `gen-images.js` | Doubao / Volcengine 生图入口 |
-| `gen-video.js` | Doubao / Volcengine 生视频入口，支持首尾帧锚定参数 |
-| `batch-gen.js` | 批量视频生成，带 60s 间隔避免限流 |
-| `lib/api.js` | API 客户端封装（Doubao / Volcengine） |
-| `test-api.js` | API 连通性测试 |
-| `preview.html` | 本地预览页（拖入 APNG/视频/图片即看） |
-| `chroma_key.py` | 绿幕抠图 → APNG（`--plays 1` 单次, `--plays 0` 无限） |
-| `check_dark.py` | 检查 PNG 帧目录是否有暗色泄漏 |
-| `fix_gray_bleed.py` | 只清理透明边缘相邻的半透明冷灰溢出，保留不透明角色灰色 |
-| `rebuild_apng.py` | 从 PNG 帧目录重建 APNG（修压缩/改帧率） |
+| `gen-images.js` | Doubao / Volcengine image-generation entry point |
+| `gen-video.js` | Doubao / Volcengine video-generation entry point, supports first/last-frame anchoring arguments |
+| `batch-gen.js` | Batch video generation, with a 60s interval to avoid rate limiting |
+| `lib/api.js` | API client wrapper (Doubao / Volcengine) |
+| `test-api.js` | API connectivity test |
+| `preview.html` | A local preview page (drag in an APNG/video/image to view it) |
+| `chroma_key.py` | Chroma key → APNG (`--plays 1` for once, `--plays 0` for infinite) |
+| `check_dark.py` | Checks a directory of PNG frames for dark-area leakage |
+| `fix_gray_bleed.py` | Only cleans up semi-transparent cool-grey bleed adjacent to transparent edges, preserves opaque character grays |
+| `rebuild_apng.py` | Rebuilds an APNG from a directory of PNG frames (fixes compression/changes frame rate) |
 
 ---
 
-## 常见问题
+## FAQ
 
-### API 拥堵 / 失败率高
+### API congestion / high failure rate
 
-拉长 `batch-gen.js` 的间隔，或稍后重试。外部 API 的排队、限流、模型能力和价格会变化，发布文档不承诺具体稳定性。
+Lengthen `batch-gen.js`'s interval, or retry later. External APIs' queuing, rate limits, model capability, and pricing can all change — the published docs make no specific stability guarantee.
 
-### 视频生成首尾帧对不齐
+### Video generation's first/last frames don't line up
 
-- 必须用 `--last-frame` 锚定尾帧
-- prompt 里强调 "Seamless loop animation — the last frame connects perfectly back to the first frame"
-- 实在对不齐，用 ffmpeg 剪辑掉前 5-10 帧或后 5-10 帧再做 APNG
+- You must anchor the last frame with `--last-frame`
+- Emphasize in the prompt: "Seamless loop animation — the last frame connects perfectly back to the first frame"
+- If they genuinely won't line up, use ffmpeg to trim the first 5-10 or last 5-10 frames before building the APNG
 
-### 绿边抠不干净
+### Green-edge keying isn't clean
 
-- 检查视频背景颜色是否一致（用 `check_dark.py` 看）
-- 调 `chroma_key.py` 的 `--tolerance`（默认 50，可加到 70）
-- 实在不行，用 `fix_gray_bleed.py` 后处理
+- Check whether the video's background color is consistent (use `check_dark.py` to look)
+- Tune `chroma_key.py`'s `--tolerance` (default 50, can go up to 70)
+- If it still doesn't work, post-process with `fix_gray_bleed.py`
 
-### API 限流
+### API rate limiting
 
-- 用 `batch-gen.js` 带间隔批量跑，避免连续请求触发限流。
-- 如果 API 经常排队或失败，降低并发或稍后重试。
-- AI 视频生成有随机性，失败后重跑是正常流程。
-
----
-
-## 来源 + 许可
-
-- 本仓库版本去掉了角色专属内容，`prompts/` 给通用模板。
-- 许可边界：pet-forge 自写文档/模板/包装代码按 MIT；如后续从其他项目继续搬入代码，需要保留对应来源和许可说明。
+- Use `batch-gen.js` with an interval for batch runs, to avoid triggering rate limits with back-to-back requests.
+- If the API is frequently queuing or failing, lower the concurrency or retry later.
+- AI video generation is inherently random — retrying after a failure is a normal part of the process.
 
 ---
 
-## ⚠️ AI Agent 注意事项
+## Source + license
 
-如果 AI agent 第一次跑这个工具：
-- 先跑 `node test-api.js`，确认缺 API key 时也不应出现 `dotenv` / `prompts.js` 缺失。
-- 先跑 `node gen-video.js` / `node gen-images.js --list` 看 CLI 帮助和状态列表。
-- 真实生成仍依赖用户自己的 API key、余额、ffmpeg 和网络；不要把本地 CLI 可启动说成"全链路已跑通"。
+- This repo's version has had character-specific content stripped out; `prompts/` provides generic templates.
+- License boundary: pet-forge's own docs/templates/wrapper code are MIT; if code is pulled in from other projects later, the corresponding attribution and license notes need to be kept.
+
+---
+
+## ⚠️ Notes for AI agents
+
+If an AI agent is running this tool for the first time:
+- Run `node test-api.js` first — confirm that even when the API key is missing, there shouldn't be a missing `dotenv` / `prompts.js` error.
+- Run `node gen-video.js` / `node gen-images.js --list` first to see the CLI help and the state list.
+- Actual generation still depends on the user's own API key, balance, ffmpeg, and network — don't describe the local CLI being launchable as "the full pipeline has been verified end to end."

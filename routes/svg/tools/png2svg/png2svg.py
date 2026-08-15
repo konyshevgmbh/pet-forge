@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""PNG → SVG 矢量化流水线 (预处理 → 量化 → vtracer 矢量化)
+"""PNG -> SVG vectorization pipeline (preprocess -> quantize -> vtracer vectorize)
 
-注意: vtracer 0.6.15 在 Python 3.14 上会段错误，需用 py -3.13 运行。
+Note: vtracer 0.6.15 segfaults on Python 3.14, run with py -3.13.
 """
 import argparse
 import json
@@ -26,7 +26,7 @@ DEFAULT_VTRACER_PARAMS = {
 }
 DEFAULT_PRESETS = {
     DEFAULT_PRESET_NAME: {
-        '_description': '扁平卡通 / 圆角凸起 / 软橡胶质感角色',
+        '_description': 'Flat cartoon / rounded bumps / soft-rubber-texture character',
         'n_colors': 8,
         'scale': 'auto',
         'vtracer': DEFAULT_VTRACER_PARAMS,
@@ -35,7 +35,7 @@ DEFAULT_PRESETS = {
 
 
 def load_presets():
-    """读取同目录 presets.json；缺失时回退到内置默认预设。"""
+    """Read presets.json from the same directory; fall back to the built-in defaults if missing."""
     preset_path = Path(__file__).with_name('presets.json')
     if not preset_path.exists():
         return DEFAULT_PRESETS
@@ -52,7 +52,7 @@ def load_presets():
 
 
 def print_presets(presets):
-    print("可用 presets:")
+    print("Available presets:")
     for name, preset in presets.items():
         desc = preset.get('_description', '')
         n_colors = preset.get('n_colors', 8)
@@ -62,39 +62,39 @@ def print_presets(presets):
 
 def parse_cli(argv):
     parser = argparse.ArgumentParser(
-        description='PNG -> SVG 矢量化流水线；核心矢量化由 vtracer 完成。'
+        description='PNG -> SVG vectorization pipeline; core vectorization is done by vtracer.'
     )
-    parser.add_argument('input', nargs='?', help='输入 PNG 文件')
-    parser.add_argument('output', nargs='?', help='输出 SVG 路径，默认同名 .svg')
+    parser.add_argument('input', nargs='?', help='Input PNG file')
+    parser.add_argument('output', nargs='?', help='Output SVG path, defaults to the same name with .svg')
     parser.add_argument(
         'legacy_n_colors',
         nargs='?',
         type=int,
-        help='兼容旧用法的位置参数：量化色数',
+        help='Positional argument for legacy usage: quantization color count',
     )
     parser.add_argument(
         'legacy_scale',
         nargs='?',
-        help='兼容旧用法的位置参数：放大倍数或 auto',
+        help='Positional argument for legacy usage: scale factor or auto',
     )
     parser.add_argument(
         '--preset',
         default=DEFAULT_PRESET_NAME,
-        help=f'读取 presets.json 中的预设，默认 {DEFAULT_PRESET_NAME}',
+        help=f'Reads a preset from presets.json, defaults to {DEFAULT_PRESET_NAME}',
     )
     parser.add_argument(
         '--n-colors',
         type=int,
-        help='覆盖 preset 的量化色数，建议 4-32',
+        help='Overrides the preset\'s quantization color count, 4-32 recommended',
     )
     parser.add_argument(
         '--scale',
-        help='覆盖 preset 的放大倍数；可填 auto 或正整数',
+        help='Overrides the preset\'s scale factor; can be auto or a positive integer',
     )
     parser.add_argument(
         '--list-presets',
         action='store_true',
-        help='列出可用预设后退出',
+        help='List available presets and exit',
     )
     return parser.parse_args(argv)
 
@@ -105,14 +105,14 @@ def normalize_scale(value):
         return 'auto'
     scale = int(text)
     if scale < 1:
-        raise ValueError('scale 必须是 auto 或正整数')
+        raise ValueError('scale must be auto or a positive integer')
     return scale
 
 
 def resolve_settings(args, presets):
     if args.preset not in presets:
         available = ', '.join(presets)
-        raise ValueError(f"未知 preset: {args.preset}。可用: {available}")
+        raise ValueError(f"Unknown preset: {args.preset}. Available: {available}")
 
     preset = presets[args.preset]
     n_colors = (
@@ -123,7 +123,7 @@ def resolve_settings(args, presets):
         else int(preset.get('n_colors', 8))
     )
     if not 4 <= n_colors <= 64:
-        raise ValueError('n_colors 建议在 4-64 之间')
+        raise ValueError('n_colors should be between 4 and 64')
 
     scale_value = (
         args.scale
@@ -140,44 +140,45 @@ def resolve_settings(args, presets):
 
 
 def load_and_prepare(input_path):
-    """加载图片，统一透明像素 RGB（防止 vtracer path 爆炸）"""
+    """Load the image, normalize transparent pixels' RGB (prevents vtracer path explosion)"""
     from PIL import Image
     import numpy as np
 
     img = Image.open(input_path).convert('RGBA')
     arr = np.array(img)
-    print(f"  原始: {img.width}x{img.height}")
+    print(f"  Original: {img.width}x{img.height}")
 
-    # 透明/半透明像素的 RGB 统一为白色
-    # 不做这一步，vtracer 会把透明区域底下的杂色 RGB 当独立颜色，导致 path 爆炸
+    # Normalize transparent/semi-transparent pixels' RGB to white
+    # Skipping this step lets vtracer treat the stray RGB under transparent areas
+    # as independent colors, causing path explosion
     mask = arr[:, :, 3] < 128
     arr[mask, :3] = 255
     arr[mask, 3] = 0
 
     transparent_pct = mask.sum() * 100 // (arr.shape[0] * arr.shape[1])
-    print(f"  透明像素: {transparent_pct}%")
+    print(f"  Transparent pixels: {transparent_pct}%")
 
     return Image.fromarray(arr)
 
 
 def remove_background(img, tolerance=60):
-    """scipy flood fill 从四角检测背景 → 设为透明（已透明的图片可跳过）"""
+    """scipy flood fill detects the background from the 4 corners -> makes it transparent (skipped if already transparent)"""
     import numpy as np
     from scipy.ndimage import label
 
     arr = np.array(img)
     h, w = arr.shape[:2]
 
-    # 检查是否已有大量透明像素
+    # Check whether there's already a large amount of transparency
     transparent_pct = (arr[:, :, 3] < 128).sum() * 100 // (h * w)
     if transparent_pct > 10:
-        print(f"  已有 {transparent_pct}% 透明像素，跳过去背景")
+        print(f"  Already {transparent_pct}% transparent, skipping background removal")
         return img
 
-    # 四角采样背景色
+    # Sample the background color from the 4 corners
     corners = [arr[0, 0, :3], arr[0, w-1, :3], arr[h-1, 0, :3], arr[h-1, w-1, :3]]
     bg_color = np.median(corners, axis=0).astype(np.uint8)
-    print(f"  检测背景色: rgb({bg_color[0]},{bg_color[1]},{bg_color[2]})")
+    print(f"  Detected background color: rgb({bg_color[0]},{bg_color[1]},{bg_color[2]})")
 
     diff = np.abs(arr[:, :, :3].astype(int) - bg_color.astype(int)).sum(axis=2)
     bg_mask = diff < tolerance
@@ -194,14 +195,14 @@ def remove_background(img, tolerance=60):
         removed += m.sum()
         arr[m, 3] = 0
 
-    print(f"  移除背景: {removed} px ({removed * 100 // (h * w)}%)")
+    print(f"  Removed background: {removed} px ({removed * 100 // (h * w)}%)")
 
     from PIL import Image as PILImage
     return PILImage.fromarray(arr)
 
 
 def quantize_colors(img, n_colors=8):
-    """色彩量化，把渐变压成纯色块"""
+    """Color quantization, compresses gradients into flat color blocks"""
     from PIL import Image as PILImage
     import numpy as np
 
@@ -212,23 +213,23 @@ def quantize_colors(img, n_colors=8):
     quantized = rgb.quantize(colors=n_colors, method=PILImage.Quantize.MEDIANCUT).convert('RGB')
 
     result = np.dstack([np.array(quantized), alpha])
-    print(f"  量化为 {n_colors} 色")
+    print(f"  Quantized to {n_colors} colors")
     return PILImage.fromarray(result)
 
 
 def upscale(img, scale):
-    """Pillow LANCZOS 放大（大图可跳过）"""
+    """Pillow LANCZOS upscale (skipped for large images)"""
     from PIL import Image
     if scale <= 1:
-        print(f"  跳过放大 (scale={scale})")
+        print(f"  Skipping upscale (scale={scale})")
         return img
     new_size = (img.width * scale, img.height * scale)
-    print(f"  放大 {scale}x: {img.width}x{img.height} → {new_size[0]}x{new_size[1]}")
+    print(f"  Upscaling {scale}x: {img.width}x{img.height} -> {new_size[0]}x{new_size[1]}")
     return img.resize(new_size, Image.LANCZOS)
 
 
 def vectorize(img, output_path, **overrides):
-    """vtracer 位图→矢量SVG"""
+    """vtracer bitmap -> vector SVG"""
     import vtracer
     import io
 
@@ -247,18 +248,18 @@ def vectorize(img, output_path, **overrides):
 
     Path(output_path).write_text(svg_str, encoding='utf-8')
     path_count = svg_str.count('<path')
-    print(f"  生成 {path_count} 条 path, {len(svg_str) // 1024}KB")
+    print(f"  Generated {path_count} paths, {len(svg_str) // 1024}KB")
     return svg_str
 
 
 def auto_scale(img):
-    """根据图片大小自动决定放大倍数"""
+    """Automatically decide the scale factor based on image size"""
     pixels = img.width * img.height
-    if pixels >= 1_000_000:  # >= 1MP, 不放大
+    if pixels >= 1_000_000:  # >= 1MP, don't upscale
         return 1
     elif pixels >= 250_000:  # >= 0.25MP, 2x
         return 2
-    else:  # 小图, 4x
+    else:  # small image, 4x
         return 4
 
 
@@ -271,15 +272,15 @@ def main():
         return
 
     if not args.input:
-        print("用法: py -3.13 png2svg.py <input.png> [output.svg] [n_colors] [scale]")
-        print("推荐: py -3.13 png2svg.py input-clean.png output.svg --preset apple-precise")
-        print("预设: py -3.13 png2svg.py --list-presets")
-        print("注意: vtracer 在 Python 3.14 上段错误，请用 py -3.13 运行")
+        print("Usage: py -3.13 png2svg.py <input.png> [output.svg] [n_colors] [scale]")
+        print("Recommended: py -3.13 png2svg.py input-clean.png output.svg --preset apple-precise")
+        print("Presets: py -3.13 png2svg.py --list-presets")
+        print("Note: vtracer segfaults on Python 3.14, please run with py -3.13")
         sys.exit(1)
 
     input_path = args.input
     if not os.path.exists(input_path):
-        print(f"错误: 文件不存在 {input_path}")
+        print(f"Error: file not found {input_path}")
         sys.exit(1)
 
     stem = Path(input_path).stem
@@ -288,25 +289,25 @@ def main():
     try:
         n_colors, scale_setting, vtracer_params = resolve_settings(args, presets)
     except ValueError as exc:
-        print(f"错误: {exc}")
+        print(f"Error: {exc}")
         sys.exit(1)
 
     print(f"preset: {args.preset}")
 
-    print("[1/5] 加载 + 清理透明像素 ...")
+    print("[1/5] Loading + cleaning transparent pixels ...")
     img = load_and_prepare(input_path)
 
-    print("[2/5] 去背景 ...")
+    print("[2/5] Removing background ...")
     img = remove_background(img)
 
-    print("[3/5] 色彩量化 ...")
+    print("[3/5] Quantizing colors ...")
     img = quantize_colors(img, n_colors)
 
     scale = auto_scale(img) if scale_setting == 'auto' else scale_setting
-    print(f"[4/5] 放大 (scale={scale}) ...")
+    print(f"[4/5] Upscaling (scale={scale}) ...")
     img = upscale(img, scale)
 
-    print("[5/5] vtracer 矢量化 ...")
+    print("[5/5] vtracer vectorizing ...")
     vectorize(img, output_path, **vtracer_params)
 
     print(f"Done -> {output_path}")

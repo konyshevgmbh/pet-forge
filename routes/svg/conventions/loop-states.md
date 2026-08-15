@@ -1,34 +1,34 @@
-# SVG 路线 · 循环 / 一次性 / 过渡 三类状态实现
+# SVG route · implementing the three state types: loop / one-shot / transition
 
-> APNG 路线和 SVG 路线在"首尾帧关系"概念上完全相同（详见 `shared/state-map.md`），
-> 但**实现机制不同**：APNG 用参考图锚定，SVG 用 CSS keyframes + animation-fill-mode。
-> 本文档讲 SVG 路线的具体实现。
+> The APNG route and the SVG route share exactly the same concept of "start/end frame relationship" (see `shared/state-map.md`),
+> but **the implementation mechanism differs**: APNG anchors with a reference image, SVG uses CSS keyframes + animation-fill-mode.
+> This document covers the concrete implementation for the SVG route.
 
 ---
 
-## 3 类状态在 SVG 路线的对应
+## How the 3 state types map onto the SVG route
 
-| 类 | APNG 路线 | SVG 路线 | CSS animation |
+| Type | APNG route | SVG route | CSS animation |
 |---|---|---|---|
-| **A. 循环** | `--image X --last-frame X` | keyframes 0% = 100% | `infinite` |
-| **B. 一次性·回归型** | 同上 + prompt "returns to" | keyframes 0% = 100% | 播 1 次，不加 `forwards` |
-| **C. 一次性·过渡型** | `--image X --last-frame Y` (Y≠X) | keyframes 0% ≠ 100% | `1 forwards` (必须 forwards) |
+| **A. Loop** | `--image X --last-frame X` | keyframes 0% = 100% | `infinite` |
+| **B. One-shot · return type** | same as above + prompt "returns to" | keyframes 0% = 100% | plays once, no `forwards` |
+| **C. One-shot · transition type** | `--image X --last-frame Y` (Y≠X) | keyframes 0% ≠ 100% | `1 forwards` (forwards is mandatory) |
 
 ---
 
-## A 类 · 循环动画（infinite loop）
+## Type A · looping animation (infinite loop)
 
-### 核心要求
+### Core requirement
 
-CSS `@keyframes` 的 **`0%` 和 `100%` 必须完全相同**——否则下一轮循环开始时跳到 0%，会出现"咔嚓"突变。
+CSS `@keyframes`'s **`0%` and `100%` must be exactly identical** — otherwise the next loop iteration jumps back to 0% and produces a jarring "snap."
 
-### 模板
+### Template
 
 ```css
 @keyframes breathe {
   0%   { transform: scale(0.97); }
   50%  { transform: scale(1.02); }
-  100% { transform: scale(0.97); }   /* ← 必须等于 0% */
+  100% { transform: scale(0.97); }   /* ← must equal 0% */
 }
 
 .pet {
@@ -36,25 +36,25 @@ CSS `@keyframes` 的 **`0%` 和 `100%` 必须完全相同**——否则下一轮
 }
 ```
 
-### 常见错误
+### Common mistake
 
 ```css
-/* ❌ 0% 和 100% 不一致, 循环必跳帧 */
+/* ❌ 0% and 100% don't match, the loop is guaranteed to jump-cut */
 @keyframes wrong {
   0%   { transform: rotate(0deg); }
-  100% { transform: rotate(10deg); }   /* ← 下一轮跳回 0deg */
+  100% { transform: rotate(10deg); }   /* ← jumps back to 0deg next cycle */
 }
 
-/* ✅ 修正 */
+/* ✅ fixed */
 @keyframes right {
   0%, 100% { transform: rotate(0deg); }
   50%      { transform: rotate(10deg); }
 }
 ```
 
-### 多个动画异步循环（避免机器感）
+### Multiple animations looping asynchronously (avoiding a mechanical feel)
 
-桌宠的"活物感"靠**多个动画异步**：
+A desktop pet's "living feel" relies on **multiple animations being asynchronous**:
 
 ```css
 .body  { animation: breathe 4.8s ease-in-out infinite; }
@@ -62,50 +62,50 @@ CSS `@keyframes` 的 **`0%` 和 `100%` 必须完全相同**——否则下一轮
 .zzz   { animation: zzz-float 1.8s linear infinite; }
 ```
 
-三个周期**故意不一样**（4.8 / 6.0 / 1.8），混合后产生不规律节奏，看起来才像活物。
+The three periods (4.8 / 6.0 / 1.8) are **deliberately different** — once mixed, they produce an irregular rhythm, which is what reads as alive.
 
-> 详见 `lessons/pitfalls.md` "异步循环"通则。睡眠状态常用呼吸、配件摆动、Z 字漂浮三层异步循环。
+> See the "asynchronous loop" rule of thumb in `lessons/pitfalls.md`. Sleeping states commonly use three asynchronous layers: breathing, accessory sway, and floating Z's.
 
-### prompt 关键词（如果用 AI 生 PNG 后做 SVG）
+### Prompt keywords (if you generate a PNG with AI and then build the SVG from it)
 
-写 PNG 生成 prompt 时**不需要**强调 "seamless loop"——因为循环是 CSS 的事，不是 PNG 的事。
+When writing the PNG generation prompt, you **don't need** to emphasize "seamless loop" — the loop is CSS's job, not the PNG's.
 
 ---
 
-## B 类 · 一次性·回归型（做完回原姿）
+## Type B · one-shot · return type (goes back to the original pose when done)
 
-### 核心要求
+### Core requirement
 
-**`0%` 和 `100%` 仍然必须相同**（最终回到原姿），但只播一次。
+**`0%` and `100%` must still match** (it ends back at the original pose), but it only plays once.
 
-### 模板
+### Template
 
 ```css
 @keyframes happy-burst {
-  0%   { transform: scale(1) rotate(0); }     /* 起始姿态 */
-  20%  { transform: scale(1.15) rotate(-3deg); } /* 蓄力 */
-  60%  { transform: scale(1.1) rotate(3deg); }   /* 释放 */
-  100% { transform: scale(1) rotate(0); }     /* ← 回到 0% */
+  0%   { transform: scale(1) rotate(0); }     /* starting pose */
+  20%  { transform: scale(1.15) rotate(-3deg); } /* wind-up */
+  60%  { transform: scale(1.1) rotate(3deg); }   /* release */
+  100% { transform: scale(1) rotate(0); }     /* ← back to 0% */
 }
 
 .pet.happy {
   animation: happy-burst 2s ease-out;
   animation-iteration-count: 1;
-  /* 不加 fill-mode forwards, 因为最终就是回到原始 transform */
+  /* no fill-mode: forwards, because it ends up back at the original transform anyway */
 }
 ```
 
-### JS 触发模式
+### JS trigger pattern
 
 ```javascript
 function triggerHappy() {
   pet.classList.add('happy');
-  // 动画结束后移除 class, 准备下次触发
+  // remove the class once the animation ends, ready for the next trigger
   setTimeout(() => pet.classList.remove('happy'), 2000);
 }
 ```
 
-或用 `animationend` 事件：
+Or use the `animationend` event:
 
 ```javascript
 pet.addEventListener('animationend', e => {
@@ -113,35 +113,36 @@ pet.addEventListener('animationend', e => {
 });
 ```
 
-### 常见错误
+### Common mistake
 
 ```css
-/* ❌ 用了 forwards 导致动画结束后停在 100% */
+/* ❌ using forwards makes the animation freeze at 100% when it ends */
 .pet.happy {
-  animation: happy-burst 2s ease-out forwards;  /* ← 错 */
+  animation: happy-burst 2s ease-out forwards;  /* ← wrong */
 }
-/* 后果: 100% 跟 0% 一样, forwards 没影响, 但加了 forwards 暗示"结束停留",
-   下次触发可能逻辑混乱. B 类不要 forwards. */
+/* Consequence: 100% is the same as 0%, so forwards has no visible effect here, but adding
+   forwards implies "stay put at the end," which can confuse the logic on the next trigger.
+   Type B should not use forwards. */
 ```
 
 ---
 
-## C 类 · 一次性·过渡型（去新姿态）
+## Type C · one-shot · transition type (moves to a new pose)
 
-### 核心要求
+### Core requirement
 
-**`0%` 和 `100%` 不同**（首≠尾），且必须用 **`animation-fill-mode: forwards`** 让动画结束后停留在 100%。
+**`0%` and `100%` differ** (start ≠ end), and you must use **`animation-fill-mode: forwards`** so the animation stays at 100% once it ends.
 
-### 模板
+### Template
 
 ```css
 @keyframes collapse-sleep {
   0%   {
-    /* idle 姿态: 直立 */
+    /* idle pose: standing upright */
     transform: rotate(0) translateY(0);
   }
   100% {
-    /* sleeping 姿态: 倒下 */
+    /* sleeping pose: fallen over */
     transform: rotate(90deg) translateY(20px);
   }
 }
@@ -149,67 +150,68 @@ pet.addEventListener('animationend', e => {
 .pet.collapsing {
   animation: collapse-sleep 0.8s ease-in;
   animation-iteration-count: 1;
-  animation-fill-mode: forwards;   /* ← 关键: 停在 100% */
+  animation-fill-mode: forwards;   /* ← key: stay at 100% */
 }
 ```
 
-### JS 状态切换模式
+### JS state-switching pattern
 
 ```javascript
 async function transitionToSleep() {
   pet.classList.add('collapsing');
-  await new Promise(r => setTimeout(r, 800));  // 等动画跑完
-  pet.classList.remove('collapsing');           // 移除过渡 class
-  pet.classList.add('sleeping');                // 加最终状态 class
+  await new Promise(r => setTimeout(r, 800));  // wait for the animation to finish
+  pet.classList.remove('collapsing');           // remove the transition class
+  pet.classList.add('sleeping');                // add the final-state class
 }
 ```
 
-### 常见错误
+### Common mistake
 
 ```css
-/* ❌ 没加 forwards, 动画结束跳回 0% (idle 姿态) */
+/* ❌ forwards is missing, the animation jumps back to 0% (idle pose) when it ends */
 .pet.collapsing {
   animation: collapse-sleep 0.8s ease-in;
-  /* 缺 animation-fill-mode: forwards */
+  /* animation-fill-mode: forwards is missing */
 }
-/* 后果: 角色坐倒下去...又站起来回 idle. 根本看不出"入睡". */
+/* Consequence: the character sits down and falls asleep... then stands back up into idle.
+   "Falling asleep" never actually reads as having happened. */
 
-/* ❌ 0% 和 100% 一样, 然后用 forwards (语义错乱) */
+/* ❌ 0% and 100% are the same, but forwards is used anyway (semantically confused) */
 @keyframes wrong-collapse {
-  0%, 100% { transform: rotate(0); }   /* ← 没去新姿态 */
+  0%, 100% { transform: rotate(0); }   /* ← doesn't move to a new pose */
 }
 ```
 
-### 衔接到下一个状态
+### Chaining into the next state
 
-C 类是过渡，结束后**必须接到下一个状态**：
+Type C is a transition — once it ends, it **must** chain into the next state:
 
 ```
-idle (A 类循环)
-  ↓ JS 触发 transitionToSleep()
-collapse-sleep (C 类, animation-fill-mode: forwards)
-  ↓ animationend 后移除 .collapsing, 加 .sleeping
-sleeping (A 类循环)
+idle (type A loop)
+  ↓ JS triggers transitionToSleep()
+collapse-sleep (type C, animation-fill-mode: forwards)
+  ↓ after animationend, remove .collapsing, add .sleeping
+sleeping (type A loop)
 ```
 
-如果 C 类结束后没接下一个状态，桌宠会**冻在过渡的 100% 帧**——这是状态机 bug。
+If a type C animation doesn't chain into a next state when it ends, the pet will **freeze at the transition's 100% frame** — that's a state-machine bug.
 
 ---
 
-## 完整状态机骨架
+## Full state machine skeleton
 
 ```javascript
 const PET = {
-  // A 类: 循环, 进入即播放, 离开即停止
+  // Type A: loop, plays as soon as you enter it, stops as soon as you leave it
   idle:     { type: 'A', class: 'idle' },
   typing:   { type: 'A', class: 'typing' },
   sleeping: { type: 'A', class: 'sleeping' },
 
-  // B 类: 一次性, 播完不切换状态 (回到上一个 idle)
+  // Type B: one-shot, doesn't switch state when done (returns to the previous idle)
   happy:        { type: 'B', class: 'happy', duration: 2000, returnTo: 'idle' },
   notification: { type: 'B', class: 'notification', duration: 2500, returnTo: 'idle' },
 
-  // C 类: 一次性·过渡, 播完切换到目标状态
+  // Type C: one-shot transition, switches to the target state when done
   'collapse-sleep': { type: 'C', class: 'collapsing', duration: 800, transitionTo: 'sleeping' },
   'wake':           { type: 'C', class: 'waking', duration: 1500, transitionTo: 'idle' },
 };
@@ -241,28 +243,28 @@ async function setState(name) {
 }
 ```
 
-这是 SVG 路线状态机的最小骨架。用户可以扩展（加事件队列 / 优先级 / 复合状态）。
+This is the minimal skeleton for an SVG-route state machine. Users can extend it (add an event queue / priority / composite states).
 
 ---
 
-## 跟 APNG 路线的差异
+## Differences from the APNG route
 
-| 维度 | SVG 路线 | APNG 路线 |
+| Dimension | SVG route | APNG route |
 |---|---|---|
-| **循环实现** | CSS `infinite` | APNG 内嵌 PLAYS=0 |
-| **首尾对齐** | keyframes 0% = 100% | 视频 --last-frame 锚定 |
-| **过渡停留** | `animation-fill-mode: forwards` | 静态 PNG 兜底 |
-| **状态切换** | JS 切 class | runtime 切换 APNG 文件 |
-| **微调成本** | 低（改 keyframes 数值） | 高（重生视频） |
-| **首尾不齐成本** | 低（改 100% 即可） | 高（重生 + 重抠图） |
+| **Loop implementation** | CSS `infinite` | APNG's built-in PLAYS=0 |
+| **Start/end alignment** | keyframes 0% = 100% | video `--last-frame` anchoring |
+| **Holding after a transition** | `animation-fill-mode: forwards` | a static PNG fallback |
+| **State switching** | JS toggles a class | runtime swaps the APNG file |
+| **Cost of a small tweak** | low (change keyframe values) | high (regenerate the video) |
+| **Cost of a start/end mismatch** | low (just change 100%) | high (regenerate + re-key) |
 
-**SVG 路线最大优势**：首尾不齐这种问题**永远不会成为生产瓶颈**，因为 keyframes 数值你完全可控。
+**The SVG route's biggest advantage**: a start/end mismatch problem **will never become a production bottleneck**, because you fully control the keyframe values.
 
 ---
 
-## 用 hello-idle.svg.html 验证
+## Verifying with hello-idle.svg.html
 
-`templates/hello-idle.svg.html` 的 breathe 动画就是 A 类标准实现：
+`templates/hello-idle.svg.html`'s breathe animation is the standard type-A implementation:
 
 ```css
 @keyframes breathe {
@@ -272,15 +274,15 @@ async function setState(name) {
 }
 ```
 
-打开浏览器看 30s+，循环应该完全无缝（没有"咔嚓"突变）。如果有，你改了 0% 或 100% 让它们不一致——回头检查。
+Open it in a browser and watch for 30s+ — the loop should be completely seamless (no jarring "snap"). If there is one, you've changed 0% or 100% so they no longer match — go back and check.
 
 ---
 
-## 给 Claude 的提示
+## Hints for Claude
 
-如果用户做 SVG 桌宠时问"循环不无缝怎么办"：
+If a user building an SVG desktop pet asks "why isn't my loop seamless":
 
-1. 先问是 A / B / C 哪类（指本文档）
-2. 检查 keyframes 的 0% 和 100% 是否相同（A / B 必须相同）
-3. C 类检查是否加了 `animation-fill-mode: forwards`
-4. 检查多个动画的周期是不是故意不一样（异步循环要求）
+1. First ask which type it is — A / B / C (referring to this document)
+2. Check whether the keyframes' 0% and 100% match (they must, for A / B)
+3. For type C, check whether `animation-fill-mode: forwards` was added
+4. Check whether multiple animations' periods are deliberately different (the asynchronous-loop requirement)

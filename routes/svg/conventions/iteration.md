@@ -1,23 +1,23 @@
-# 磨制流程：v1..vN → lock → spec
+# Polishing workflow: v1..vN → lock → spec
 
-> 单个状态从"想做"到"锁定"的标准流程。
+> The standard process for a single state, from "want to make it" to "locked".
 
 ---
 
-## 流程总览
+## Process overview
 
 ```
-[草稿]
+[draft]
    │
    ▼
-[v1: 第一个方向]
+[v1: first direction]
    │
-   ├─ 评审通过 ──▶ [继续磨, 小修覆盖]
+   ├─ review passes ──▶ [keep polishing, small fixes overwrite it]
    │
-   └─ 跑偏 ──▶ [归档 _archive/, 起 v2 换方向]
+   └─ off track ──▶ [archive to _archive/, start v2 in a new direction]
                   │
                   ▼
-                [v2: 新方向] → 同样的判断
+                [v2: new direction] → same judgment call
                   │
                   ▼
                 ... vN ...
@@ -26,124 +26,124 @@
               [lock]
                   │
                   ▼
-              [备份 + 写 spec + 同步进度表]
+              [backup + write spec + sync the progress table]
 ```
 
 ---
 
-## 关键概念
+## Key concepts
 
-### v1, v2, v3... 是"方向"不是"补丁"
+### v1, v2, v3... are "directions," not "patches"
 
-- ✅ v1 是"探头方向"，v2 是"球化方向"，v3 是"凸起方向"——**三个完全不同的视觉路径**
-- ❌ v1 是"还有 bug"，v2 是"修了 bug"——**这种情况直接覆盖 v1，不要起 v2**
+- ✅ v1 is the "probe direction," v2 is the "morph direction," v3 is the "bulge direction" — **three completely different visual approaches**
+- ❌ v1 "still has a bug," v2 "fixed the bug" — **in this case just overwrite v1, don't start v2**
 
-为什么这么严格？因为**桌宠动画没"标准答案"，只有"方向选择 + 该方向的最佳实现"**。把版本号留给方向，能让你（和未来的你）一眼看清楚试过几条路。
+Why be this strict? Because **desktop pet animation has no "correct answer," only "choice of direction + the best implementation of that direction."** Reserving version numbers for directions lets you (and future you) see at a glance how many paths have been tried.
 
-### 跑偏方向归档不删
+### Off-track directions get archived, not deleted
 
-试错过程中**所有跑偏的版本**都要归档进 `_archive/<state>/`。理由：
+During iteration, **every off-track version** should be archived into `_archive/<state>/`. Reasons:
 
-- 后续磨制可能想"绕回去看看那条路是不是真的死胡同"
-- 跑偏的具体细节（哪一步翻车、为什么）是元教训源头，删了就丢了
-- 人工评审 / AI 复盘时需要看历史，否则"为啥放弃这条路"无从查起
+- Later polishing might want to "circle back and check whether that path was really a dead end"
+- The specific details of what went wrong (which step failed, and why) are the source of meta-lessons — delete them and they're gone
+- Human review / AI retrospectives need to see the history, otherwise there's no way to trace why a direction was abandoned
 
-### 改之前先复制一份
+### Copy before editing
 
-**这条是硬规则**：改任何已经基本能看的动画文件之前，先复制一份带 `-backup-YYYY-MM-DD` 后缀。
+**This is a hard rule**: before editing any animation file that's already basically presentable, copy it first with a `-backup-YYYY-MM-DD` suffix.
 
 ```bash
 cp idle-eye-follow-v1.svg.html idle-eye-follow-v1-backup-2026-05-02.svg.html
-# 然后改 idle-eye-follow-v1.svg.html
+# then edit idle-eye-follow-v1.svg.html
 ```
 
-理由：磨制经常"调着调着发现昨天那版本反而更好"，没备份就丢了。
+Reason: while polishing, it's common to tweak something and realize yesterday's version was actually better. Without a backup, it's lost.
 
 ---
 
-## 单状态完整流程
+## Full workflow for a single state
 
-### 第 1 步：草稿前准备（必做）
+### Step 1: Pre-draft prep (required)
 
-新状态开工前：
+Before starting a new state:
 
-1. 看 `confirmed/states/` 已有状态找参考（最近 1-3 个）
-2. 重读：
-   - `routes/svg/conventions/svg-vs-canvas.md`（避免错选 Canvas）
-   - `routes/svg/conventions/single-file.md`（自包含范式）
-   - 你要套的 preset（`presets/apple-precise.md` or others）
-3. 看公开案例或自己的历史状态里是否有类似动作
+1. Look at existing states in `confirmed/states/` for reference (the most recent 1-3)
+2. Re-read:
+   - `routes/svg/conventions/svg-vs-canvas.md` (avoid wrongly picking Canvas)
+   - `routes/svg/conventions/single-file.md` (self-contained paradigm)
+   - the preset you're going to apply (`presets/apple-precise.md` or others)
+3. Check public examples or your own past states for similar motions
 
-> 这一步看似繁琐，但很多跑偏都来自开工前没复查约束。
+> This step looks tedious, but a lot of derailments come from not re-checking constraints before starting work.
 
-### 第 2 步：v1 起手
+### Step 2: Start v1
 
-- 文件名：`<state>-<方向描述>-v1.svg.html`
-- 复制 `templates/hello-idle.svg.html` 改 `<g id="pet">` 起手
-- 保留 hello-idle 的 CSS 变量注释，方便调
+- File name: `<state>-<direction-description>-v1.svg.html`
+- Copy `templates/hello-idle.svg.html` and start by editing `<g id="pet">`
+- Keep hello-idle's CSS variable comments, to make tuning easier
 
-### 第 3 步：浏览器循环看 30s+
+### Step 3: Watch the loop in a browser for 30s+
 
-**静帧 OK 不算 OK**。必须看循环：
+**A good static frame doesn't count as OK.** You must watch the loop:
 
-- 浏览器开发者工具关掉，全屏看 30s 以上
-- 关注：循环衔接是否平滑、节奏是否舒服、有没有突兀的位置漂移
-- **静帧好看 ≠ 循环好看**：位置漂移通常只会在循环播放时暴露
+- Close the browser dev tools, watch fullscreen for 30+ seconds
+- Pay attention to: whether the loop seam is smooth, whether the rhythm feels comfortable, any jarring positional drift
+- **A good static frame ≠ a good loop**: positional drift usually only shows up during looped playback
 
-### 第 4 步：拿给用户/维护者评审
+### Step 4: Take it to the user/maintainer for review
 
-3 种结果：
+3 possible outcomes:
 
-- **方向 OK，细节小修** → 直接改 v1，不开 v2
-- **方向 OK 大体可以但要改某关键点** → 仍是 v1，磨
-- **方向不对** → v1 进 `_archive/`，起 v2 换新方向
+- **Direction OK, minor detail fixes** → edit v1 directly, don't start v2
+- **Direction is basically OK but a key point needs changing** → still v1, keep polishing
+- **Wrong direction** → v1 goes to `_archive/`, start v2 in a new direction
 
-### 第 5 步：锁定（lock）
+### Step 5: Lock
 
-- 把当前 vN 复制到 `_locked-backups/<state>-vN-backup-YYYY-MM-DD.svg.html`
-- 把当前 vN 复制到 `confirmed/states/<state>-<approach>-vN.svg.html`
-- 跑偏的 v1..v(N-1) 全部归档到 `_archive/<state>/`
+- Copy the current vN to `_locked-backups/<state>-vN-backup-YYYY-MM-DD.svg.html`
+- Copy the current vN to `confirmed/states/<state>-<approach>-vN.svg.html`
+- Archive all off-track v1..v(N-1) into `_archive/<state>/`
 
-### 第 6 步：写 spec
+### Step 6: Write the spec
 
-把这个状态的关键参数写进对应文档：
+Write this state's key parameters into the relevant doc:
 
-- 如果是套 apple-precise preset 的标准状态，spec 写在角色项目的 `docs/states/<state>.md`
-- 如果是发现了新的通用经验，写进 `routes/svg/lessons/pitfalls.md`
+- If it's a standard state using the apple-precise preset, write the spec in the character project's `docs/states/<state>.md`
+- If a new general-purpose lesson was discovered, write it into `routes/svg/lessons/pitfalls.md`
 
-spec 应该包含：
-- 套了哪个 preset
-- 自定义参数（哪些数值改了，为什么）
-- 关键技术点（用的 transform 还是 path morph 等）
-- 锁定日期 + 锁定时用户/维护者的判断依据
+The spec should include:
+- Which preset was applied
+- Custom parameters (which values were changed, and why)
+- Key technical points (transform vs. path morph, etc.)
+- Lock date + the user's/maintainer's rationale at lock time
 
-### 第 7 步：同步进度表
+### Step 7: Sync the progress table
 
-如果项目有进度表，更新它：
+If the project has a progress table, update it:
 
-- 状态从 ⬜ 改成 ✅
-- 加锁定日期
-- 加一行简评（突出贡献：节奏 / 几何 / 教训）
-
----
-
-## 元教训（流程层面）
-
-1. **v1 之前必须看参考**：不看就上工 = 跑偏概率 80%
-2. **循环看 30s+ 是硬规则**：不是"觉得差不多"
-3. **跑偏方向归档不删**：复盘资产，删了再也找不回
-4. **改前先备份**：30 秒的事，能救一整天的工作
-5. **锁定要正式**：备份 + spec + 进度表 同步，不留尾巴
-6. **spec 写"为什么"不只写"是什么"**：参数值后面加一句"因为 X"，未来才能判断要不要改
+- Change the state from ⬜ to ✅
+- Add the lock date
+- Add a one-line summary (highlighting the contribution: rhythm / geometry / lesson learned)
 
 ---
 
-## 节奏档位（参考）
+## Meta-lessons (process level)
 
-单个 idle 类状态的保守磨制周期：
+1. **You must look at references before v1**: skipping this = ~80% chance of going off track
+2. **Watching the loop for 30s+ is a hard rule**: not "looks about right"
+3. **Off-track directions get archived, not deleted**: they're retrospective assets — delete them and you can never get them back
+4. **Back up before editing**: a 30-second task that can save a whole day of work
+5. **Locking must be formal**: backup + spec + progress table, all in sync, no loose ends
+6. **The spec should explain "why," not just "what"**: add a "because X" after each parameter value, so future-you can judge whether it needs to change
 
-- 简单状态（idle / typing 类）：1-3 天
-- 中等状态（sleeping / happy 多段）：3-7 天
-- 复杂状态（long-idle 9 段叙事）：1-2 周
+---
 
-新人套这个流程**至少留 3 倍时间**。预期管理是流程的一部分。
+## Pacing tiers (reference)
+
+Conservative polishing timeframes for a single idle-type state:
+
+- Simple states (idle / typing type): 1-3 days
+- Medium states (sleeping / happy with multiple segments): 3-7 days
+- Complex states (long-idle 9-segment narrative): 1-2 weeks
+
+Newcomers following this process should budget **at least 3x** this time. Managing expectations is part of the process.

@@ -1,110 +1,110 @@
-# APNG 路线工作流
+# APNG Route Workflow
 
-> 完整管线 + 每步的工具 + 常见坑 + 元教训。面向 APNG 桌宠工作流整理。
+> The full pipeline, the tool for each step, common pitfalls, and meta-lessons. Organized around the practical APNG desktop pet workflow.
 
 ---
 
-## 管线总览
+## Pipeline Overview
 
 ```
-[规划]
+[Plan]
    │
    ▼
-[1. 准备参考图]
-   │  AI 生 1 张主参考图 / 自己画 / 网页生
+[1. Prepare a reference image]
+   │  AI-generate 1 main reference image / draw it yourself / generate on the web
    ▼
-[2. 写 prompt]
-   │  CHARACTER_PREFIX + 动作描述 + BG_SUFFIX
+[2. Write the prompt]
+   │  CHARACTER_PREFIX + motion description + BG_SUFFIX
    ▼
-[3. 生视频]
-   │  gen-video.js (--last-frame 锚定) → mp4 (绿幕背景)
+[3. Generate the video]
+   │  gen-video.js (--last-frame anchoring) → mp4 (green screen background)
    ▼
-[4. 检查 + 重生]
-   │  循环节奏 OK ? 动作 OK ? 翻车就重跑
+[4. Review + regenerate]
+   │  Loop rhythm OK? Motion OK? Rerun if something's off
    ▼
-[5. 绿幕抠图 → APNG]
+[5. Chroma key → APNG]
    │  chroma_key.py
    ▼
-[6. APNG 后处理（可选）]
+[6. APNG post-processing (optional)]
    │  fix_gray_bleed.py / check_dark.py / rebuild_apng.py
    ▼
-[7. 检验 + 锁定]
-   │  浏览器循环看 30s+, OK 就锁
+[7. Validate + lock]
+   │  Watch it loop in the browser for 30s+, lock it in once it's good
    ▼
-[8. 接入桌宠运行时]
-   │  按 shared/state-map.md 接运行时 / electron
+[8. Wire into the desktop pet runtime]
+   │  Follow shared/state-map.md to connect to the runtime / Electron
 ```
 
 ---
 
-## 第 1 步：准备参考图（reference image）
+## Step 1: Prepare a Reference Image
 
-### 为什么必须先有参考图
+### Why you need a reference image first
 
-- AI 生视频的"角色一致性"靠**参考图锚定**
-- 没有参考图，每次生视频角色都长不一样
-- 参考图通常用作**首帧**（`--image`）或**尾帧**（`--last-frame`）
+- The AI video's "character consistency" relies on **reference-image anchoring**
+- Without a reference image, the character looks different every time you generate a video
+- The reference image is typically used as **the first frame** (`--image`) or **the last frame** (`--last-frame`)
 
-### 怎么准备
+### How to prepare one
 
-**选项 A：用 gen-images.js（配置的外部 API）**：
+**Option A: use gen-images.js (a configured external API)**:
 ```powershell
-node gen-images.js --prompt "<CHARACTER_PREFIX 的具体填好版本>" --output reference/main-ref.png
+node gen-images.js --prompt "<your filled-in CHARACTER_PREFIX>" --output reference/main-ref.png
 ```
 
-**选项 B：网页端图像生成工具**：
-- 优点：交互快
-- 缺点：网页版可能不存档历史导致一致性更难
-- 操作：把 CHARACTER_PREFIX 贴进对话，让 AI 生几张挑一张
+**Option B: a web-based image generation tool**:
+- Pro: quick to iterate interactively
+- Con: web tools may not save history, making consistency harder
+- How: paste CHARACTER_PREFIX into the chat, generate a few images, and pick one
 
-**选项 C：自己画 / Figma**：
-- 优点：百分百可控
-- 缺点：要美术能力
+**Option C: draw it yourself / Figma**:
+- Pro: 100% controllable
+- Con: requires art skills
 
-### 主参考图标准
+### Main Reference Image Standards
 
-- 角色面向**正面或微侧**（侧面太多导致后续状态侧面错位）
-- 标准坐姿 / 站姿（最中性，能转换到其他状态）
-- 眼睛**睁开**（闭眼参考图无法做 idle）
-- 表情**中性**（笑/哭/惊讶都不适合做主参考）
-- 背景**纯绿幕** `#00B140` 或 `#00FF00`
+- Character faces **forward or a slight angle** (too much of a side view causes misalignment in later side-facing states)
+- Standard sitting / standing pose (the most neutral, and convertible into other states)
+- Eyes **open** (a closed-eye reference image can't be used to make idle)
+- **Neutral** expression (smiling/crying/surprised are all unsuitable for the main reference)
+- **Pure green screen** background `#00B140` or `#00FF00`
 
 ---
 
-## 第 2 步：写 prompt
+## Step 2: Write the Prompt
 
-模板见 `prompts/template.js`。三段式：
+See `prompts/template.js` for the template. It's a 3-part structure:
 
 ```
-[CHARACTER_PREFIX] —— 角色外观（所有状态共享）
-[动作描述]         —— 这个状态做什么
-[BG_SUFFIX]       —— 背景要求（绿幕保持纯色）
+[CHARACTER_PREFIX] — the character's appearance (shared across all states)
+[Motion description] — what this state does
+[BG_SUFFIX]       — background requirement (keep the green screen solid)
 ```
 
-### 动作描述写法
+### How to Write the Motion Description
 
-✅ **具体**：`The cat slowly opens its mouth wide in a yawn — tongue curling, eyes squeezing shut.`
+✅ **Specific**: `The cat slowly opens its mouth wide in a yawn — tongue curling, eyes squeezing shut.`
 
-❌ **抽象**：`The cat is yawning.`
+❌ **Abstract**: `The cat is yawning.`
 
-✅ **强调循环 / 起止**：`Seamless loop, last frame connects to first frame.` / `Returns to the exact starting pose at the end.`
+✅ **Emphasize looping / start-end**: `Seamless loop, last frame connects to first frame.` / `Returns to the exact starting pose at the end.`
 
-✅ **Negative prompt 防翻车**：
-- `DO NOT inflate or balloon the tail` （AI 喜欢把尾巴吹气球）
-- `DO NOT rotate or shift the camera angle` （AI 喜欢加镜头运动）
-- `NO hands, NO fingers, NO human body parts visible` （AI 喜欢加人手）
+✅ **Negative prompts to prevent failures**:
+- `DO NOT inflate or balloon the tail` (the AI likes to balloon the tail)
+- `DO NOT rotate or shift the camera angle` (the AI likes to add camera movement)
+- `NO hands, NO fingers, NO human body parts visible` (the AI likes to add human hands)
 
-### prompt 长度
+### Prompt Length
 
-- 太短：AI 自由发挥过头
-- 太长：AI 抓不住重点
-- **甜点区：80-150 词**（不含 CHARACTER_PREFIX）
+- Too short: the AI improvises too much
+- Too long: the AI loses focus on what matters
+- **Sweet spot: 80-150 words** (not counting CHARACTER_PREFIX)
 
 ---
 
-## 第 3 步：生视频
+## Step 3: Generate the Video
 
-### gen-video.js 用法
+### gen-video.js Usage
 
 ```powershell
 node gen-video.js \
@@ -114,92 +114,92 @@ node gen-video.js \
   --api doubao
 ```
 
-### 选择 API 和模型
+### Choosing an API and Model
 
-| 场景 | 需要关注的能力 |
+| Scenario | Capability to pay attention to |
 |---|---|
-| 循环动画（首尾帧必须对齐） | 视频模型需要支持首尾帧锚定 |
-| 一次性动画 | 关注动作执行质量和角色一致性 |
-| 大量批量生成 | 关注限流、排队、成本和批量稳定性 |
-| 测试 / 试错 | 关注低成本、低并发和失败后重跑成本 |
+| Looping animation (first/last frame must line up) | The video model needs to support first/last-frame anchoring |
+| One-shot animation | Focus on motion execution quality and character consistency |
+| Large batch generation | Focus on rate limits, queueing, cost, and batch stability |
+| Testing / trial and error | Focus on low cost, low concurrency, and low cost of rerunning after failure |
 
-### 单次生成成功率
+### Single-Generation Success Rate
 
-不同模型、账号额度和时段的成功率会变化。失败后通常**直接重跑**，不要试图修复失败的视频。
+Success rates vary across models, account quotas, and time of day. After a failure, the usual move is to **rerun directly** — don't try to fix a failed video.
 
 ---
 
-## 第 4 步：检查 + 重生
+## Step 4: Review + Regenerate
 
-每次生完视频立刻看 `preview.html` 或直接看 mp4：
+After each video generation, immediately check `preview.html` or watch the mp4 directly:
 
-### 通过条件
+### Pass Criteria
 
-- [ ] 角色形态跟参考图一致
-- [ ] 动作描述被正确执行
-- [ ] 背景全程纯绿幕（无阴影、无遮挡）
-- [ ] 循环类：首尾帧位置 + 形态对齐（容差 ±5px）
-- [ ] 一次性类：结尾回到中性姿态
+- [ ] Character form matches the reference image
+- [ ] The described motion is executed correctly
+- [ ] Background stays pure green screen throughout (no shadows, no occlusion)
+- [ ] Looping states: first/last frame position + pose line up (±5px tolerance)
+- [ ] One-shot states: ends back at the neutral pose
 
-### 失败模式 + 应对
+### Failure Modes + Fixes
 
-| 现象 | 应对 |
+| Symptom | Fix |
 |---|---|
-| 角色变形 / 不像参考图 | 重跑，加强 CHARACTER_PREFIX |
-| 尾巴 / 触角 / 耳朵爆炸放大 | prompt 加 "DO NOT inflate" negative |
-| 镜头平移 / 旋转 | prompt 加 "Camera stays still" |
-| 背景出现物体 / 阴影 | prompt 加 "Background must remain pure green" |
-| 首尾帧错位 | `--last-frame` 锚定，prompt 强调 "Seamless loop" |
-| 帧数过少 / 跳帧 | 调长 duration 或换更稳定的可用模型 |
+| Character deforms / doesn't match reference | Rerun, strengthen CHARACTER_PREFIX |
+| Tail / antenna / ears balloon up | Add "DO NOT inflate" negative to the prompt |
+| Camera pans / rotates | Add "Camera stays still" to the prompt |
+| Objects / shadows appear in background | Add "Background must remain pure green" to the prompt |
+| First/last frame misaligned | Anchor with `--last-frame`, emphasize "Seamless loop" in the prompt |
+| Too few frames / frame skipping | Increase duration or switch to a more stable available model |
 
 ---
 
-## 第 5 步：绿幕抠图 → APNG
+## Step 5: Chroma Key → APNG
 
 ```powershell
 py chroma_key.py output/idle/raw.mp4 output/idle/result.apng --plays 0
 ```
 
-`--plays 0` = 无限循环，`--plays 1` = 单次播放（默认）。
+`--plays 0` = infinite loop, `--plays 1` = play once (default).
 
-### 绿幕颜色一致性
+### Green Screen Color Consistency
 
-视频生成时 prompt 指定 `#00B140`，但 AI 生出来可能略有偏差（`#00B042` / `#00B23E`...）。`chroma_key.py` 默认 tolerance=50 能容忍这种偏差。极端情况调到 70。
+The prompt specifies `#00B140` when generating the video, but the AI's output may drift slightly (`#00B042` / `#00B23E`...). `chroma_key.py`'s default tolerance=50 can handle this drift. For extreme cases, raise it to 70.
 
 ---
 
-## 第 6 步：APNG 后处理（按需）
+## Step 6: APNG Post-Processing (as needed)
 
-| 问题 | 工具 |
+| Problem | Tool |
 |---|---|
-| 边缘有绿边 / 灰边 | `fix_gray_bleed.py <frames_dir> [fixed_frames_dir]` |
-| 暗部色泄漏（深色处看见绿） | `check_dark.py <frames_dir>` 检查 → 手动 mask |
-| APNG 文件过大 | `rebuild_apng.py <frames_dir> <out.apng> --fps 8 --max-colors 128` |
-| 帧率太快 | `rebuild_apng.py <frames_dir> <out.apng> --fps 8` |
+| Green or gray edge fringing | `fix_gray_bleed.py <frames_dir> [fixed_frames_dir]` |
+| Dark-area color bleed (green visible in dark areas) | `check_dark.py <frames_dir>` to check → manual mask |
+| APNG file too large | `rebuild_apng.py <frames_dir> <out.apng> --fps 8 --max-colors 128` |
+| Frame rate too fast | `rebuild_apng.py <frames_dir> <out.apng> --fps 8` |
 
 ---
 
-## 第 7 步：检验 + 锁定
+## Step 7: Validate + Lock
 
-跟 SVG 路线一样，**浏览器循环看 30s+** 才能锁定。
+Just like the SVG route, you can only lock it in after **watching it loop in the browser for 30s+**.
 
-锁定流程：
-- `output/<state>/result.apng` 是当前推荐版本
-- `output/<state>/raw.mp4` 保留（万一要重新抠图）
-- 跑偏的尝试归档到 `output/<state>/_archive/`
+Locking process:
+- `output/<state>/result.apng` is the current recommended version
+- `output/<state>/raw.mp4` is kept (in case you need to re-chroma-key)
+- Rejected attempts are archived to `output/<state>/_archive/`
 
 ---
 
-## 第 8 步：接入桌宠运行时
+## Step 8: Wire Into the Desktop Pet Runtime
 
-按 `shared/state-map.md` 把 APNG 路径填进运行时的状态映射表。
+Follow `shared/state-map.md` to fill the APNG paths into the runtime's state mapping table.
 
-通用 theme 接入方式：
+Generic theme integration format:
 ```json
 {
   "states": {
-    "idle": "<相对路径>/idle.apng",
-    "typing": "<相对路径>/typing.apng",
+    "idle": "<relative path>/idle.apng",
+    "typing": "<relative path>/typing.apng",
     ...
   }
 }
@@ -207,13 +207,13 @@ py chroma_key.py output/idle/raw.mp4 output/idle/result.apng --plays 0
 
 ---
 
-## 元教训
+## Meta-Lessons
 
-1. **角色一致性 > prompt 详细度**：CHARACTER_PREFIX 写好一次，所有状态都受益
-2. **循环靠 `--last-frame`**：尾帧锚定是 APNG 路线的关键能力
-3. **失败重跑是常态**：不要试图"修"失败的视频，直接重跑
-4. **绿幕颜色统一**：参考图、prompt、抠图工具用同一个绿色（#00B140 推荐）
-5. **批量生成带间隔**：`batch-gen.js` 的 60s 间隔不是冗余，是必须
-6. **prompt 最后强调一次起止姿态**：放在 prompt 最后效果最好
-7. **mini 状态另写 prompt**：mini-idle 不是 idle 的缩小版，是不同姿态
-8. **预留预算**：外部生成 API 的价格和成功率会变化，按服务文档预留重跑额度
+1. **Character consistency > prompt detail**: write CHARACTER_PREFIX well once, and every state benefits
+2. **Looping relies on `--last-frame`**: last-frame anchoring is the key capability of the APNG route
+3. **Failed reruns are normal**: don't try to "fix" a failed video, just rerun it
+4. **Keep the green screen color consistent**: use the same green (`#00B140` recommended) across the reference image, prompt, and chroma-key tool
+5. **Batch generation needs spacing**: the 60s interval in `batch-gen.js` isn't redundant, it's necessary
+6. **Restate the start/end pose one more time at the end of the prompt**: this position has the strongest effect
+7. **Write a separate prompt for mini states**: mini-idle isn't a scaled-down version of idle, it's a different pose
+8. **Budget for reruns**: external generation API pricing and success rates vary — budget for reruns based on the service's current documentation

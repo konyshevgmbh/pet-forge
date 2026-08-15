@@ -25,7 +25,7 @@ const DOUBAO_VIDEO_MODEL = process.env.DOUBAO_VIDEO_MODEL || 'doubao-seedance-1-
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 function checkKey(name, key) {
-  if (!key) throw new Error(`${name} 未设置，请检查 .env 文件`);
+  if (!key) throw new Error(`${name} is not set, please check your .env file`);
 }
 
 /**
@@ -33,7 +33,7 @@ function checkKey(name, key) {
  */
 async function downloadBuffer(url) {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`下载失败: ${res.status} ${url}`);
+  if (!res.ok) throw new Error(`Download failed: ${res.status} ${url}`);
   return Buffer.from(await res.arrayBuffer());
 }
 
@@ -48,7 +48,7 @@ async function saveImage(data, outputPath) {
     const buf = Buffer.from(data, 'base64');
     fs.writeFileSync(outputPath, buf);
   }
-  console.log(`  ✓ 保存: ${outputPath}`);
+  console.log(`  ✓ Saved: ${outputPath}`);
 }
 
 // ── Doubao / Volcengine API ──────────────────────────────
@@ -84,7 +84,7 @@ export async function doubaoGenerateImage(prompt, opts = {}) {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`豆包生图失败: ${res.status} — ${text}`);
+    throw new Error(`Doubao image generation failed: ${res.status} — ${text}`);
   }
 
   return res.json();
@@ -125,8 +125,10 @@ export async function doubaoGenerateVideo(prompt, refImageUrl, opts = {}) {
   const body = {
     model: opts.model || DOUBAO_VIDEO_MODEL,
     content,
-    // 火山方舟 Seedance 官方去水印参数(body 独立字段,非 prompt --watermark)。
-    // 默认带水印 → 这里默认 false,生成即无水印;传 { watermark: true } 可恢复。
+    // Volcengine Ark Seedance's official watermark-removal parameter (a top-level
+    // body field, not a --watermark prompt flag). Watermarked by default → defaults
+    // to false here so generation comes out watermark-free; pass { watermark: true }
+    // to restore it.
     watermark: opts.watermark === true,
   };
 
@@ -141,12 +143,12 @@ export async function doubaoGenerateVideo(prompt, refImageUrl, opts = {}) {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`豆包视频生成失败: ${res.status} — ${text}`);
+    throw new Error(`Doubao video generation failed: ${res.status} — ${text}`);
   }
 
   const task = await res.json();
   const taskId = task.id || task.task_id;
-  console.log(`  豆包视频任务已创建: id=${taskId}, 轮询中...`);
+  console.log(`  Doubao video task created: id=${taskId}, polling...`);
   return pollDoubaoTask(taskId);
 }
 
@@ -162,7 +164,7 @@ async function pollDoubaoTask(taskId, maxAttempts = 120, interval = 5000) {
     });
 
     if (!res.ok) {
-      console.log(`  轮询 #${i + 1}: HTTP ${res.status}, 继续等待...`);
+      console.log(`  Poll #${i + 1}: HTTP ${res.status}, still waiting...`);
       continue;
     }
 
@@ -170,16 +172,16 @@ async function pollDoubaoTask(taskId, maxAttempts = 120, interval = 5000) {
     const status = result.status || '';
 
     if (status === 'succeeded' || status === 'completed') {
-      console.log('  ✓ 任务完成!');
+      console.log('  ✓ Task complete!');
       return result;
     }
     if (status === 'failed' || status === 'error') {
-      throw new Error(`任务失败: ${JSON.stringify(result)}`);
+      throw new Error(`Task failed: ${JSON.stringify(result)}`);
     }
 
-    console.log(`  轮询 #${i + 1}: ${status}`);
+    console.log(`  Poll #${i + 1}: ${status}`);
   }
-  throw new Error(`任务超时（等了 ${maxAttempts * interval / 1000}s）`);
+  throw new Error(`Task timed out (waited ${maxAttempts * interval / 1000}s)`);
 }
 
 export { downloadBuffer, saveImage, sleep };

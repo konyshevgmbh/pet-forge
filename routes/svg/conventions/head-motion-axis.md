@@ -1,177 +1,177 @@
-# 头部运动轴线约定
+# Head motion axis conventions
 
-> 转头、抬头、低头、眼睛跟随和脸部视线方向，先按同一套 face rig 做轴线，再调表情细节。
+> For head turns, looking up, looking down, eye-follow, and facial gaze direction, first build the axes with a single face rig, then tune expression detail.
 
-## 一句话规则
+## The one-sentence rule
 
-头部运动不是多张静态帧 crossfade。
+Head motion is not a crossfade between several static frames.
 
-正确机制是一只 active SVG 在同一个坐标系里移动和变形：脸部轮廓、浅色脸区域、五官、耳朵、头顶装饰都跟随同一套 facial plane。静态帧淡入淡出只能让端点看起来像，运动中会暴露鼻梁跳、腮红漂、脸边裁切错、斜向视线不成立等问题。
+The correct mechanism is one active SVG moving and deforming within the same coordinate system: the face contour, the light-colored face area, the facial features, the ears, and any head-top decoration all follow the same facial plane. Crossfading static frames can only make the endpoints look right — during motion it exposes problems like a jumping nose bridge, drifting cheek blush, mis-clipped face edges, and diagonal gaze directions that don't hold together.
 
-## 术语
+## Terminology
 
-- facial plane：脸部共同运动平面，五官、腮红和脸区边界都应从这里取位姿；
-- mixer：把左右 `yaw` 和上下 `pitch` 合成一个视线方向的函数；
-- diagonal trim：斜向时削弱叠加幅度，避免左右和上下运动直接相加过猛；
-- lower wrap：低头或斜下时对浅色脸区下缘做包覆，避免露出不该出现的主色区域。
+- facial plane: the shared plane of motion for the face — the features, the blush, and the face-area boundary should all take their pose from here;
+- mixer: the function that combines left/right `yaw` and up/down `pitch` into a single gaze direction;
+- diagonal trim: dampens the combined amplitude on diagonals, so left/right and up/down motion don't simply add up and become too extreme;
+- lower wrap: when looking down or diagonally down, wraps the lower edge of the light-colored face area, to avoid exposing a base-color area that shouldn't be visible.
 
-## 先建面部语义锚点
+## Build facial semantic anchors first
 
-做任何头脸方向前，先标出这些锚点，并让调试页能显示它们：
+Before working on any head/face direction, mark out these anchors first, and make sure the debug page can display them:
 
-- 脸部轮廓：左右脸边、下巴、脸顶曲线；
-- 主色-浅色分界线：例如头壳和浅色脸区的边界；
-- 眼睛中心：视觉中心，不一定等于眼 path 的几何中心；
-- 鼻梁：中线和鼻嘴连接关系；
-- 嘴：跟随鼻梁，不独立漂；
-- 腮红：跟随当前浅色脸区裁切；
-- 腮影：贴着当前浅色脸区下缘弧度；
-- 耳朵：区分近侧、远侧和被头壳遮挡的关系；
-- 头顶：头壳最高点和呆毛 / 角 / 装饰根部。
+- Face contour: left/right face edges, chin, top-of-face curve;
+- Base-color/light-color boundary: e.g. the boundary between the head shell and the light-colored face area;
+- Eye center: the visual center, not necessarily the geometric center of the eye path;
+- Nose bridge: the midline and its relationship to the mouth;
+- Mouth: follows the nose bridge, doesn't drift independently;
+- Blush: follows the current light-colored face area's clip;
+- Cheek shading: hugs the current light-colored face area's lower-edge curve;
+- Ears: distinguish near side, far side, and being occluded by the head shell;
+- Head top: the head shell's highest point and the root of any cowlick/horn/decoration.
 
-这些点是语义合同，不是一次性调参截图。后续 `yaw`、`pitch`、斜向混合和 pointer-look 都应该复用它们。
+These points are a semantic contract, not a one-off tuning screenshot. Subsequent `yaw`, `pitch`, diagonal blending, and pointer-look should all reuse them.
 
-## 运动平面归属
+## Which motion plane a part belongs to
 
-头脸里的部件不要混在一个“脸组”里粗暴移动。先决定它属于哪个运动平面：
+Don't lump the parts of the head/face into one "face group" and move them crudely all at once. First decide which motion plane each one belongs to:
 
-- 眼睛、鼻子、嘴、鼻嘴连接线：属于 face plane；
-- 腮红：属于 cheek / face plane，必须被当前浅色脸区裁切；
-- 腮影：属于浅色脸区下缘几何；
-- 耳朵：属于 head side geometry，区分近侧、远侧和头壳遮挡；
-- 头顶装饰：属于 head top geometry，跟头壳方向走，不跟五官漂；
-- 表情嘴巴内部：叠在 face pose 之后，clip 仍跟随 face plane。
+- Eyes, nose, mouth, nose-mouth connector: belong to the face plane;
+- Blush: belongs to the cheek/face plane, must be clipped by the current light-colored face area;
+- Cheek shading: belongs to the geometry of the light-colored face area's lower edge;
+- Ears: belong to the head-side geometry, distinguishing near side, far side, and occlusion by the head shell;
+- Head-top decoration: belongs to the head-top geometry, follows the head shell's direction, doesn't drift with the facial features;
+- Expression mouth interior: layered on top of the face pose, its clip still follows the facial plane.
 
-如果一个部件同时依赖两个平面，先写清主平面，再把次级补偿做成小参数。不要每个状态临时猜。
+If a part depends on two planes at once, write down clearly which is the primary plane, then make the secondary compensation a small parameter. Don't guess it ad hoc for every state.
 
-## 锚点链路
+## Anchor chain
 
-脸部锚点不要混用。
+Don't mix up facial anchors.
 
-脸区顶部链路应该由边界点组成：
+The face area's top chain should be made of boundary points:
 
 ```text
-左端点 -> 左低点 -> 鼻梁左点 -> 鼻梁中点 -> 鼻梁右点 -> 右低点 -> 右端点
+left endpoint -> left low point -> nose-bridge left point -> nose-bridge midpoint -> nose-bridge right point -> right low point -> right endpoint
 ```
 
-鼻梁附近的点直接影响中线是否稳定。眼睛视觉中心可以单独作为眼睛锚点，但不要把它们塞进脸区顶部曲线。眼睛中心和脸部边界混用，会让侧转时脸边被五官位置污染。
+Points near the nose bridge directly affect whether the midline stays stable. The eyes' visual centers can be their own separate anchors, but don't stuff them into the face-area's top curve. Mixing the eye centers with the face boundary will let the eye positions contaminate the face edge during a turn.
 
-调试页里要同时看 marker、label、脸区 path 和腮红裁切。它们必须在同一个坐标上下文里验证；marker 看起来对，不代表真实 path 已经对。
+The debug page needs to show markers, labels, the face-area path, and the blush clip all at once. They must be verified in the same coordinate context — a marker looking correct doesn't mean the real path is actually correct.
 
-## Yaw 轴线
+## Yaw axis
 
-左右转头不是整张脸水平平移。
+Turning the head left/right is not a horizontal translation of the whole face.
 
-更稳的逻辑：
+A more stable approach:
 
-- 输入 `yaw` 表示左右方向；
-- 先用平滑函数处理转头进度，避免机械滑动；
-- 两端脸边权重低，不能乱跑；
-- 鼻梁和浅色脸区中部权重大，承担方向变化；
-- 生成新的脸区顶部链路，再用曲线重建 path；
-- 鼻梁附近降低曲线过冲，避免尖、抖、塌；
-- 近侧耳朵中心基本稳定，主要通过尺寸变化读出转向；
-- 远侧耳朵轻微后退，不要跟脸一起横飞。
+- Input `yaw` represents the left/right direction;
+- Run the turn progress through a smoothing function first, to avoid mechanical sliding;
+- Low weight at both face edges — they must not wander;
+- High weight at the nose bridge and the middle of the light-colored face area — they carry the directional change;
+- Generate a new face-area top chain, then rebuild the path with curves;
+- Reduce curve overshoot near the nose bridge, to avoid sharpness, jitter, or collapse;
+- The near-side ear's center stays roughly fixed, and the turn mainly reads through its size changing;
+- The far-side ear retreats slightly, it shouldn't fly sideways together with the face.
 
-如果要做 45 度侧脸，优先分段调脸部边界。外侧脸边、鼻梁附近、脸颊下缘不是同一条均匀曲线，不要只套一个整体 transform。
+If you're doing a 45-degree profile, tune the face boundary in segments first. The outer face edge, the area near the nose bridge, and the lower cheek edge are not one uniform curve — don't just apply a single overall transform.
 
-## Pitch 轴线
+## Pitch axis
 
-抬头和低头不是把整张脸上下平移。
+Looking up and looking down is not translating the whole face vertically.
 
-抬头时，同一套 facial plane 应该同时发生：
+When looking up, the following should all happen within the same facial plane at once:
 
-- 主色-浅色分界线上移；
-- 浅色脸区向下或向外变多；
-- 上半头壳视觉上变少或轻微压低；
-- 眼睛、鼻子、嘴、腮红沿 pitch 轴上移；
-- 五官可以轻微紧凑，但不要单独改眼睛半径来伪装抬头；
-- 耳朵更容易被头壳盖住；
-- 头顶装饰可以轻微下压，避免比头壳更抢眼。
+- The base-color/light-color boundary moves up;
+- The light-colored face area grows downward or outward;
+- The upper head shell visually shrinks or is pressed down slightly;
+- Eyes, nose, mouth, and blush move up along the pitch axis;
+- The features can tighten up slightly, but don't fake "looking up" by changing the eye radius alone;
+- The ears are more easily covered by the head shell;
+- Head-top decoration can be pressed down slightly, so it doesn't upstage the head shell.
 
-低头时方向相反：
+When looking down, the direction reverses:
 
-- 主色-浅色分界线下移；
-- 浅色脸区变小或向内收；
-- 上半头壳视觉上变多；
-- 五官沿 pitch 轴下移并可轻微舒展；
-- 耳朵和头顶装饰更容易露出；
-- 下脸可以内收，避免低头时脸颊鼓成另一只角色。
+- The base-color/light-color boundary moves down;
+- The light-colored face area shrinks or pulls inward;
+- The upper head shell visually grows;
+- The features move down along the pitch axis and can loosen up slightly;
+- The ears and head-top decoration are more likely to be exposed;
+- The lower face can pull inward, to avoid the cheeks bulging into looking like a different character when looking down.
 
-判断标准不是“参数对称”，而是同一只角色的脸部平面在转动。
+The test isn't "are the parameters symmetric," it's whether the same character's facial plane is genuinely rotating.
 
-低头和斜下方向容易露出主色区域。优先修浅色脸区几何：让脸区下缘做 lower wrap，并同步更新裁切。不要用身体放大、脖子补丁或独立遮挡块掩盖露底。
+Looking down and diagonally-down directions easily expose the base-color area. Fix the light-colored face area's geometry first: give its lower edge a lower wrap and update the clip in sync. Don't cover up the exposure with a bigger body, a neck patch, or a separate occlusion block.
 
-## Yaw + Pitch Mixer
+## Yaw + Pitch mixer
 
-左右转头和上下抬低头必须能组合。
+Left/right head turns and up/down looking must be composable.
 
-做 mixer 时至少检查：
+When building the mixer, check at least the following:
 
-- `yaw=left/right` 和 `pitch=up/down` 能合成左上、右上、左下、右下；
-- 鼻梁、眼睛、鼻嘴、腮红沿同一 facial plane 走；
-- 近侧耳朵不要向外滑，应该围绕稳定中心变化；
-- 斜向幅度过猛时，先减组合幅度，不要拆散单轴逻辑；
+- `yaw=left/right` and `pitch=up/down` can combine into up-left, up-right, down-left, and down-right;
+- The nose bridge, eyes, nose-mouth connector, and blush all move along the same facial plane;
+- The near-side ear shouldn't slide outward — it should change around a stable center;
+- If the diagonal amplitude is too extreme, reduce the combined amplitude first, don't break apart the single-axis logic;
 
-一个好的 mixer 应该让斜向视线像算法合成出来的同一只角色，而不是两张端点帧叠在一起。
+A good mixer should make the diagonal gaze look like the same character computed algorithmically, not two endpoint frames laid on top of each other.
 
-组合时不要简单把 `yaw` 和 `pitch` 线性相加。常见策略：
+Don't simply add `yaw` and `pitch` linearly when combining them. Common strategy:
 
-- 先用 `yaw` 生成左右侧转后的脸部路径；
-- 再按每个点的 y 位置应用不同的 pitch 位移；
-- 靠近脸上方的点跟随交界线；
-- 靠近脸下方的点跟随下缘运动；
-- 斜向方向用 diagonal trim 收敛强度；
-- 低头 / 斜下方向启用 face lower wrap；
-- cheek crease 作为脸区贴图跟随同一套几何。
+- First generate the turned face path using `yaw`;
+- Then apply a different pitch displacement based on each point's y position;
+- Points near the top of the face follow the boundary line;
+- Points near the bottom of the face follow the lower-edge motion;
+- Use diagonal trim to rein in the strength on diagonal directions;
+- Enable the face's lower wrap for looking-down / diagonally-down directions;
+- The cheek crease, as a decal on the face area, follows the same geometry.
 
-## 斜向候选帧
+## Diagonal candidate frames
 
-斜向方向通过视觉确认后，导出候选锚点包。
+Once a diagonal direction is visually confirmed, export a candidate anchor package.
 
-每个斜向方向都导出：
+For every diagonal direction, export:
 
 - `0%`
 - `50%`
 - `100%`
 
-`0% / 50% / 100%` 用来防漂移：后续正式动画、循环状态或脚本重写时，必须能对照这三帧检查中途脸边、鼻梁、腮红、腮影和耳朵是否跑偏。
+`0% / 50% / 100%` are there to guard against drift: later, when doing the formal animation, a looping state, or a script rewrite, you must be able to check the mid-transition face edge, nose bridge, blush, cheek shading, and ears against these three frames to see if anything has drifted.
 
-导出帧不应该包含轴线、轮廓 guide、目标影子或其他调试层。调试层留在调试页。
+Exported frames should not contain axes, contour guides, target shadows, or other debug layers. Keep debug layers on the debug page.
 
-## 裁切和贴脸细节
+## Clipping and face-decal details
 
-腮红、腮影、浅色脸区裁切必须跟随同一套脸部几何。
+Blush, cheek shading, and the light-colored face area's clip must all follow the same facial geometry.
 
-常见稳定结构：
+A common, stable structure:
 
-- 浅色脸区 path 是当前帧的真实脸部浅色区域；
-- 腮红被当前浅色脸区 path 裁切；
-- 腮红可以有自己的平移补偿，但不要跟随脸层纵向压缩到变形；
-- 腮影不是独立公式，也不是底边直线采样，它应该像贴在浅色脸区上的曲线；
-- 裁切 path 每帧等于同帧浅色脸区 path，不带额外 transform。
+- The light-colored face-area path is the real light-colored face region for the current frame;
+- The blush is clipped by the current light-colored face-area path;
+- The blush can have its own translation compensation, but shouldn't be vertically compressed along with the face layer until it deforms;
+- Cheek shading is not an independent formula, and not a straight-line sample along the bottom edge — it should read like a curve stuck onto the light-colored face area;
+- The clip path for every frame equals that same frame's light-colored face-area path, with no extra transform.
 
-如果腮红露出脸边、腮影变直线、浅色脸区和五官分开漂，说明这些细节已经脱离了 face rig。
+If the blush pokes past the face edge, the cheek shading turns into a straight line, or the light-colored face area and the features drift apart, it means these details have come loose from the face rig.
 
-## 中性帧防跳变
+## Guarding against snapping at the neutral frame
 
-通用规则见 `rig-first.md` 的运动中性帧。
+For the general rule, see the "neutral pose in motion" section of `rig-first.md`.
 
-头脸特例：只要进入 `yaw` / `pitch` / pointer-look / 斜向视线，`yaw=0` 也要继续走同一套 face rig。不要在过正中时切回 raw master face path，否则鼻梁和脸区边界会 snap。
+Head/face-specific case: as long as you've entered `yaw` / `pitch` / pointer-look / diagonal gaze, `yaw=0` should still go through the same face rig. Don't switch back to the raw master face path when crossing dead-center, or the nose bridge and face-area boundary will snap.
 
-## 验收清单
+## Acceptance checklist
 
-锁定头脸运动前检查：
+Check before locking head/face motion:
 
-- 调试页能显示轴线、脸部轮廓 guide 和关键锚点；
-- 单轴 `yaw`、单轴 `pitch`、四个斜向方向都看过；
-- 每个确认方向都有 `0% / 50% / 100%` 可对照；
-- 浏览器循环或指针跟随至少看 30 秒；
-- 鼻梁过中线没有跳；
-- 眼睛、鼻子、嘴、腮红没有各走各的；
-- 腮红始终在浅色脸区裁切内；
-- 腮影贴着当前浅色脸区下缘，不漂、不变直；
-- 耳朵没有滑出头壳关系；
-- 导出文件不包含调试 guide。
+- The debug page can display the axes, the face-contour guide, and the key anchors;
+- Single-axis `yaw`, single-axis `pitch`, and all four diagonal directions have been reviewed;
+- Every confirmed direction has `0% / 50% / 100%` to check against;
+- The browser loop or pointer-follow has been watched for at least 30 seconds;
+- The nose bridge doesn't jump crossing the midline;
+- The eyes, nose, mouth, and blush aren't each drifting on their own;
+- The blush always stays within the light-colored face area's clip;
+- The cheek shading hugs the current light-colored face area's lower edge, without drifting or flattening into a straight line;
+- The ears haven't slid out of their relationship with the head shell;
+- The exported file contains no debug guides.
 
-同一个中线跳、腮红漂或脸区露馅连续出现两轮，就先停下重审 face rig。继续补局部位移通常只会把两套几何模型缝得更难拆。
+If the same midline jump, blush drift, or face-area exposure shows up two rounds in a row, stop and re-review the face rig. Continuing to patch local offsets usually just stitches the two geometric models together in a way that's harder to pull apart later.

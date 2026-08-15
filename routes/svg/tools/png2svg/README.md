@@ -1,98 +1,98 @@
-# png2svg —— 扁平桌宠/吉祥物专用 PNG 矢量化流水线
+# png2svg — a PNG vectorization pipeline for flat desktop pets/mascots
 
-> 来源：pet-forge 的公开 PNG-to-SVG 辅助工具。
-> 用途：把 1 张 PNG（去过背景的扁平角色）转成 SVG，准备进 SVG 路线动画工作流。
-> 适用：扁平卡通、低色块、像素风、纯色 + 圆角凸起类角色。
+> Source: pet-forge's public PNG-to-SVG helper tool.
+> Purpose: turn 1 PNG (a flat character with the background removed) into an SVG, ready for the SVG-route animation workflow.
+> Good fit for: flat cartoons, low color-count, pixel-art, solid-color + rounded-bump-style characters.
 
 ---
 
-## ⚠️ 环境陷阱（必读）
+## ⚠️ Environment trap (must read)
 
-**vtracer 0.6.15 在 Python 3.14 上会段错误。必须用 Python 3.13。**
+**vtracer 0.6.15 segfaults on Python 3.14. You must use Python 3.13.**
 
-Windows 推荐：
+Recommended on Windows:
 ```powershell
 py -3.13 png2svg.py <input.png>
 ```
 
-如果你只有 3.14，先装 3.13：
+If you only have 3.14, install 3.13 first:
 ```powershell
-# 方法 1: pyenv-win 或 Microsoft Store 装 3.13
-# 方法 2: 官网下载 https://www.python.org/downloads/release/python-3130/
+# Method 1: install 3.13 via pyenv-win or the Microsoft Store
+# Method 2: download from the official site https://www.python.org/downloads/release/python-3130/
 ```
 
 ---
 
-## 安装依赖
+## Installing dependencies
 
 ```powershell
 py -3.13 -m pip install Pillow numpy scipy vtracer
 ```
 
-依赖说明：
-- **Pillow** —— 图像加载/缩放/量化
-- **numpy** —— 像素操作
-- **scipy** —— 去背景的 flood fill 标注
-- **vtracer** —— 核心矢量化（Rust 写的 Python binding）
+Dependency notes:
+- **Pillow** — image loading/scaling/quantization
+- **numpy** — pixel manipulation
+- **scipy** — flood-fill labeling for background removal
+- **vtracer** — the core vectorization engine (a Rust-written Python binding)
 
-### 核心矢量化引擎：vtracer
+### The core vectorization engine: vtracer
 
-本工具不自己手写 tracer。真正的 PNG/JPG → SVG 路径追踪由 [`vtracer`](https://github.com/visioncortex/vtracer) 完成；`png2svg.py` 只做桌宠工作流需要的前后处理：
+This tool doesn't hand-write its own tracer. The actual PNG/JPG → SVG path tracing is done by [`vtracer`](https://github.com/visioncortex/vtracer); `png2svg.py` only does the pre/post-processing that a desktop-pet workflow needs:
 
-- 清理透明像素底下的脏 RGB，避免透明区域生成大量无意义 path
-- 用 flood fill 兜底移除纯色背景
-- 先把颜色量化成少量色块，减少路径数量
-- 小图放大后再追踪，避免低分辨率锯齿直接进 SVG
-- 用 `presets.json` 固化桌宠常用参数
+- Cleaning up dirty RGB under transparent pixels, to avoid the transparent area generating a pile of meaningless paths
+- Removing a solid-color background as a fallback, via flood fill
+- Quantizing colors down to a small number of blocks first, to reduce the path count
+- Upscaling small images before tracing, to avoid low-resolution jaggedness going straight into the SVG
+- Baking in commonly-used desktop-pet parameters via `presets.json`
 
-vtracer 的原理不是简单描边。它会先做颜色/像素聚类，再对聚类区域做 path walking、路径简化、角点保留平滑和曲线拟合。对这类通用矢量化算法，直接用成熟引擎比在本仓库里手搓可靠得多。
+vtracer's approach isn't a simple outline trace. It first does color/pixel clustering, then runs path walking, path simplification, corner-preserving smoothing, and curve fitting on the clustered regions. For this class of general-purpose vectorization algorithm, using a mature engine directly is far more reliable than hand-rolling one in this repo.
 
-**限制必须说清楚：SVG 路线只推荐简单图形。** 适合干净边界、低色数、扁平卡通、像素风、logo/图标类素材；不适合照片、复杂插画、毛发、透明半影、强渐变、噪点和纹理很多的图。复杂图形会出现 path 爆炸、文件巨大、边缘变脏、颜色分层怪、细节丢失等问题。这类素材优先走 APNG 路线，或手工重画关键 SVG 结构。
+**The limitation needs to be stated clearly: the SVG route is only recommended for simple graphics.** It's a good fit for clean-edged, low-color-count, flat-cartoon, pixel-art, or logo/icon-style material; it's not a good fit for photos, complex illustration, fur, semi-transparent halos, strong gradients, or images with a lot of noise and texture. Complex graphics will trigger path explosion, huge file sizes, dirty edges, weird color layering, and lost detail. For that kind of material, prefer the APNG route, or hand-redraw the key SVG structures.
 
-### 推荐去背景工具：rembg
+### Recommended background-removal tool: rembg
 
-如果输入 PNG 不是透明背景，推荐先用 [`rembg`](https://github.com/danielgatis/rembg) 生成透明背景版本，再交给 `png2svg.py`。
+If the input PNG doesn't have a transparent background, it's recommended to first generate a transparent-background version with [`rembg`](https://github.com/danielgatis/rembg), then hand it to `png2svg.py`.
 
 ```powershell
 py -3.13 -m pip install "rembg[cpu,cli]"
 py -3.13 -m rembg i input.png input-clean.png
 ```
 
-说明：
-- `rembg` 是外部可选工具，不是 pet-forge 内置依赖。
-- 官方要求 Python `>=3.11,<3.14`，所以和本工具推荐的 Python 3.13 对齐。
-- 第一次运行会下载模型到本机缓存目录；离线环境需要提前准备模型。
+Notes:
+- `rembg` is an optional external tool, not a built-in pet-forge dependency.
+- Officially requires Python `>=3.11,<3.14`, which lines up with this tool's recommended Python 3.13.
+- The first run will download a model into the local cache directory; an offline environment needs the model prepared ahead of time.
 
 ---
 
-## 用法
+## Usage
 
-### 基本用法
+### Basic usage
 
 ```powershell
 py -3.13 png2svg.py input-clean.png output.svg --preset apple-precise
 ```
 
-如果不写输出路径，默认输出同名 `.svg`。
+If you don't specify an output path, it defaults to the same name with a `.svg` extension.
 
-### 查看预设
+### Listing presets
 
 ```powershell
 py -3.13 png2svg.py --list-presets
 ```
 
-### 指定 preset / 颜色数 / 放大倍数
+### Specifying preset / color count / scale factor
 
 ```powershell
 py -3.13 png2svg.py input-clean.png output.svg --preset pixel-art --n-colors 16 --scale 1
 ```
 
-推荐参数：
-- `--preset`：读取 `presets.json`，默认 `apple-precise`
-- `--n-colors`：覆盖 preset 的量化色数，建议 4-32
-- `--scale`：覆盖 preset 的放大倍数，可填 `auto` 或正整数
+Recommended parameters:
+- `--preset`: reads from `presets.json`, defaults to `apple-precise`
+- `--n-colors`: overrides the preset's quantization color count, 4-32 is recommended
+- `--scale`: overrides the preset's scale factor, can be `auto` or a positive integer
 
-兼容旧位置参数：
+Legacy positional arguments are still supported:
 
 ```powershell
 py -3.13 png2svg.py input.png output.svg 16 4
@@ -100,21 +100,21 @@ py -3.13 png2svg.py input.png output.svg 16 4
 
 ---
 
-## 5 步流水线说明
+## The 5-step pipeline, explained
 
 ```
-[1/5] 加载 + 清理透明像素   ← 防 vtracer path 爆炸
-[2/5] 去背景                 ← scipy flood fill 从四角检测
-[3/5] 色彩量化               ← PIL median cut，渐变压成纯色块
-[4/5] 放大                   ← LANCZOS，小图自动 4x，大图不放
-[5/5] vtracer 矢量化         ← 位图 → SVG path
+[1/5] Load + clean up transparent pixels  ← prevents vtracer path explosion
+[2/5] Remove background                     ← scipy flood fill, detected from the 4 corners
+[3/5] Color quantization                    ← PIL median cut, compresses gradients into flat color blocks
+[4/5] Upscale                               ← LANCZOS, small images auto-4x, large images left alone
+[5/5] vtracer vectorization                 ← bitmap → SVG path
 ```
 
 ---
 
-## 风格预调参（preset）
+## Style presets
 
-`presets.json` 里有针对不同风格的参数预设。建议直接用对应 preset，避免手调 vtracer 的 10 个黑盒参数。
+`presets.json` contains parameter presets tuned for different styles. It's recommended to use the matching preset directly, rather than hand-tuning vtracer's 10 black-box parameters.
 
 ```powershell
 py -3.13 png2svg.py input-clean.png output.svg --preset apple-precise
@@ -122,7 +122,7 @@ py -3.13 png2svg.py input-clean.png output.svg --preset pixel-art
 py -3.13 png2svg.py --list-presets
 ```
 
-### apple-precise（扁平卡通 / 圆角凸起）
+### apple-precise (flat cartoon / rounded bumps)
 
 ```json
 {
@@ -141,7 +141,7 @@ py -3.13 png2svg.py --list-presets
 }
 ```
 
-适用：圆润、低色块、有机形状角色（云朵 / 软糖 / 圆角字符）。
+Good for: rounded, low-color-block, organically-shaped characters (clouds / marshmallows / rounded-corner characters).
 
 ### pixel-art
 
@@ -162,55 +162,55 @@ py -3.13 png2svg.py --list-presets
 }
 ```
 
-适用：整像素角色（FC / GBA 风）。`mode: polygon` 保留直角。
+Good for: full-pixel characters (FC/GBA style). `mode: polygon` preserves right angles.
 
 ---
 
-## 6 个痛点（已知问题）
+## 6 pain points (known issues)
 
-| # | 痛点 | 状态 | 解决思路 |
+| # | Pain point | Status | Fix idea |
 |---|---|---|---|
-| 1 | 必须 py 3.13 | 文档已标 | 等 vtracer 修 3.14 段错误 |
-| 2 | vtracer 10 参数全是黑盒 | 已缓解 | `--preset` + presets.json |
-| 3 | CLI 一次性，没交互 | 待解决 | 加 `--watch` 模式 |
-| 4 | 没预览/对比 | 待解决 | 加输出 HTML 含原图 + SVG 对比 |
-| 5 | 没"小尺寸 preview 先确认" | 待解决 | 加 `--preview` 跑缩略图先 |
-| 6 | 通用矢量化非桌宠专用 | 部分缓解 | presets.json 针对桌宠预调，复杂图仍建议 APNG |
+| 1 | Requires py 3.13 | Documented | Waiting for vtracer to fix the 3.14 segfault |
+| 2 | vtracer's 10 parameters are all black boxes | Mitigated | `--preset` + presets.json |
+| 3 | CLI is one-shot, no interactivity | Unresolved | Add a `--watch` mode |
+| 4 | No preview/comparison | Unresolved | Add HTML output with the original image + SVG side by side |
+| 5 | No "confirm with a small preview first" | Unresolved | Add a `--preview` flag that runs a thumbnail first |
+| 6 | General-purpose vectorization isn't desktop-pet-specific | Partially mitigated | presets.json is pre-tuned for desktop pets; complex images should still go the APNG route |
 
-当前已解决环境说明和参数预设；预览、交互和更强的复杂图判定留后续迭代。
+Environment documentation and parameter presets are handled for now; preview, interactivity, and stronger detection of complex images are left for future iterations.
 
 ---
 
-## 如何用在 SVG 路线工作流
+## How to use it in the SVG-route workflow
 
 ```
-1. 用户去 AI 网页生 / 自己画 / Figma 导一张 PNG
-2. 如果不是透明背景 → 先用 rembg 去背景：
+1. The user generates a PNG via an AI web tool / draws it themselves / exports it from Figma
+2. If the background isn't transparent → first remove it with rembg:
    py -3.13 -m pip install "rembg[cpu,cli]"
    py -3.13 -m rembg i input.png input-clean.png
 3. py -3.13 png2svg.py input-clean.png character.svg --preset apple-precise
-4. 把 character.svg 的 path 复制到 routes/svg/templates/hello-idle.svg.html 的 <g id="pet"> 里
-5. 调 hello-idle 的 CSS 变量适配自己的角色
-6. 在浏览器双击打开看动画
+4. Copy character.svg's paths into the <g id="pet"> in routes/svg/templates/hello-idle.svg.html
+5. Adjust hello-idle's CSS variables to fit your character
+6. Double-click to open it in a browser and watch the animation
 ```
 
 ---
 
-## 调参经验
+## Parameter-tuning experience
 
-实际跑出来不满意时按这个顺序调：
+When the output isn't satisfying, tune in this order:
 
-1. **path 太多/太碎** → 加 `filter_speckle`（48 → 80）
-2. **颜色丢失** → 加 `n_colors`（8 → 16）
-3. **角太尖** → 减 `corner_threshold`（80 → 60）
-4. **角太圆** → 加 `corner_threshold`（80 → 120）
-5. **整体形状抓不准** → 减 `path_precision`（2 → 1）
-6. **路径锯齿严重** → 加 `path_precision`（2 → 4）
+1. **Too many/too fragmented paths** → increase `filter_speckle` (48 → 80)
+2. **Colors are getting lost** → increase `n_colors` (8 → 16)
+3. **Corners too sharp** → decrease `corner_threshold` (80 → 60)
+4. **Corners too round** → increase `corner_threshold` (80 → 120)
+5. **The overall shape isn't captured accurately** → decrease `path_precision` (2 → 1)
+6. **Path edges are heavily jagged** → increase `path_precision` (2 → 4)
 
 ---
 
-## 来源 + 版本
+## Source + version
 
-- 本仓库版本：公开整理版，已接入 presets.json。
-- 核心矢量化引擎：vtracer，MIT 开源项目，见 https://github.com/visioncortex/vtracer 。
-- 许可边界：pet-forge 自写 README/包装说明按 MIT；如后续从其他项目继续搬入代码，需要保留对应来源和许可说明。
+- This repo's version: a public, cleaned-up edition, already wired up to presets.json.
+- Core vectorization engine: vtracer, an MIT open-source project, see https://github.com/visioncortex/vtracer .
+- License boundary: pet-forge's own README/wrapper docs are MIT; if code is pulled in from other projects later, the corresponding attribution and license notes need to be kept.

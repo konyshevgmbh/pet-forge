@@ -1,78 +1,78 @@
-# 附属结构骨骼点约定
+# Appendage rig point conventions
 
-> 手脚、尾巴、触角、翅膀、道具等附属结构不是一段 path 在移动；先定义骨骼点、接触点和重心，再让轮廓从同一套 rig 生成。没有这类附属结构的角色跳过本页。通用变形规则见 `rig-first.md`。
+> Hands, feet, tail, antennae, wings, props, and other appendages aren't a single path being moved around; define the rig points, contact points, and center of gravity first, then generate the silhouette from that same rig. Characters with no such appendages can skip this page. For general deformation rules, see `rig-first.md`.
 
-## 一句话规则
+## The one-sentence rule
 
-手脚动画先建语义点，再变形 path。
+For limb animation, build semantic points first, then deform the path.
 
-直接拖原始 path 控制点，静帧可能过关；一旦循环、转身、伸手入身体或走路，就会出现尖肘、尖腕、脚底漂、角色像要摔倒等问题。
+Dragging the raw path's control points directly might get past a static-frame review; but the moment you loop it, turn the character, reach a hand into the body, or make it walk, you'll get sharp elbows, sharp wrists, feet floating off the ground, or a character that looks like it's about to fall over.
 
-## 手部：运动点和接触点分开
+## Hands: keep motion points and contact points separate
 
-先给手命名骨骼点。点的数量随角色而定，关键是**区分运动关节和接触点**：
+Start by naming the hand's rig points. The number of points depends on the character, but the key is **distinguishing motion joints from contact points**:
 
-- 根部：可见手根 / 袖口出口，运动起点，先锁住；
-- 弯折点：中段曲率（如肘、腕），控制软管式弯曲；
-- 末端：掌尖 / 爪尖，负责主要方向和长度变化；
-- 接触点：袖口 / 身体接触位置，**不是运动关节**，只描述接触、遮挡、阴影和父表面关系。
+- Root: the visible hand root / sleeve-cuff exit, the starting point of the motion — lock this first;
+- Bend point: mid-segment curvature (like an elbow or wrist), controls a hose-like bend;
+- Tip: the palm tip / claw tip, responsible for the main direction and length changes;
+- Contact point: the sleeve-cuff/body contact location, **not a motion joint** — it only describes contact, occlusion, shading, and the relationship with the parent surface.
 
-> 本案的字母代号是 `S`(隐藏肩) `/R`(手根) `/E`(肘) `/W`(腕) `/T`(掌尖) `/C`(接触点)。换角色时按自己的解剖命名，不要照搬字母。
+> This document's letter codes are `S` (hidden shoulder), `R` (hand root), `E` (elbow), `W` (wrist), `T` (palm tip), `C` (contact point). When working on a different character, name these after your own character's anatomy — don't just copy the letters.
 
-把接触点当弯折关节用，或把手切成前后两段裁切，接触边缘就会断、脏、像被切开。正确做法：手保持完整，接触关系用命名 helper layer 表达，不靠把坏手藏进身体解决。
+Treating a contact point as a bend joint, or cutting the hand into two clipped front/back segments, will make the contact edge break, look dirty, or look sliced. The correct approach: keep the hand as one whole piece, and express the contact relationship through a named helper layer — don't solve it by hiding a broken hand inside the body.
 
-## 手部弯折
+## Bending a hand
 
-圆润手臂更像一根连续软管，不是两段硬杆。做弯折时：
+A smooth, rounded arm reads more like one continuous hose than two rigid rods. When doing a bend:
 
-- 手根先锁住，避免漂；
-- 末端负责主要方向和长度变化；
-- 中段弯折点控制曲率，但不制造硬折线；
-- 轮廓宽度沿手根到掌尖渐变；
-- 爪尖 / 掌尖细节最后再贴到末端附近。
+- Lock the hand root first, to avoid drift;
+- The tip is responsible for the main direction and length changes;
+- The mid-segment bend point controls the curvature, but shouldn't create a hard crease;
+- The outline width should taper gradually from the hand root to the palm tip;
+- Claw-tip / palm-tip detail is only stuck near the tip at the very end.
 
-不要用 group scale 假装手臂变长。靠身体的根部也会一起拉伸，视觉上像整条手被橡皮筋扯开。长度 / 厚度变化在 path 点级别做，group transform 只负责位置和旋转。
+Don't fake an elongated arm with a group scale. The root near the body would stretch along with it too, and visually it'll look like the whole arm got pulled apart by a rubber band. Length/thickness changes happen at the path-point level; the group transform is only responsible for position and rotation.
 
-## 手部 dense warp
+## Dense warp for hands
 
-很多生产 path 是稀疏的，可能只有几段 `C` 或混有 `L` 直线。直接搬原始 `C` 点，肘、腕、掌尖容易变尖。通用 dense warp 做法见 `rig-first.md`；手臂特例是先建中线，dense 采样后用法线把左右轮廓重新映射，支持 `M/L/C/Q/Z`，生成 0% 帧后先比对母版。
+Many production paths are sparse, sometimes with just a few `C` segments or a mix including `L` straight lines. Directly moving the raw `C` points tends to make the elbow, wrist, and palm tip turn sharp. For the general dense-warp approach, see `rig-first.md`; the special case for an arm is to build the centerline first, densely sample it, then remap the left/right contour using normals, supporting `M/L/C/Q/Z`, and compare the generated 0% frame against the master before trusting it.
 
-## 脚部参考点
+## Foot reference points
 
-脚至少标出：
+At minimum, mark these on a foot:
 
-- 脚根 / 身体连接点；
-- 髋部参考点；
-- 当前接地线（`groundY`）；
-- 脚轮廓环：建议拆成十余点的可重建轮廓，让脚在抬起、踮脚、转向、落地时保持同一只脚的体积和方向。
+- Foot root / body connection point;
+- Hip reference point;
+- Current ground line (`groundY`);
+- Foot contour ring: it's a good idea to split this into a reconstructible contour of a dozen or so points, so the foot keeps the same volume and orientation across lifting, standing on tiptoe, turning, and landing.
 
-## 抬脚是绕髋画弧，不是直线平移
+## Lifting a foot is an arc around the hip, not a straight-line translation
 
-抬脚时，脚心更像绕髋部画弧，而不是沿直线上移。做法：
+When lifting a foot, the sole moves more like it's tracing an arc around the hip, rather than moving straight up. Approach:
 
-- 先锁髋点、脚根、接地线；
-- 脚心沿髋部外侧弧线运动；
-- 中途用圆润过渡形态防止脚掌坍塌；
-- 落地时脚底压回同一条接地线。
+- Lock the hip point, foot root, and ground line first;
+- Move the sole along an arc on the outside of the hip;
+- Use a rounded in-between shape partway through, to prevent the sole from collapsing;
+- When landing, press the sole back down onto the same ground line.
 
-脚属于身体承重链，抬起轨迹要围绕髋部和接地线解释，不能当独立贴片上下平移。
+The foot belongs to the body's weight-bearing chain — the lift trajectory needs to be explained in terms of the hip and the ground line, and can't be treated as an independent patch translating up and down.
 
-## 单脚动作要问重心（COM）
+## Single-foot actions need to ask about the center of gravity (COM)
 
-单脚踮脚、走路、侧移时，不要只看哪只脚抬起来。还要标：重心轴（COM）、承重脚、摆动脚、身体轴、髋部轴。
+For standing on one foot's tiptoe, walking, or side-stepping, don't just look at which foot is lifted. Also mark: the center-of-gravity axis (COM), the weight-bearing foot, the swinging foot, the body axis, and the hip axis.
 
-承重脚上方必须有 COM。如果身体轴仍留在两脚中间，而一只脚已经抬起，角色会像要摔倒。任何单脚动作先画重心轴，再画脚轨迹——站稳是身体、髋、承重脚共同决定的，不是脚的局部问题。
+There must be a COM above the weight-bearing foot. If the body axis stays sitting between the two feet while one foot is already lifted, the character will look like it's about to fall over. For any single-foot action, draw the center-of-gravity axis first, then the foot trajectory — staying balanced is decided jointly by the body, hips, and weight-bearing foot, not a local problem with the foot alone.
 
-## 验收清单
+## Acceptance checklist
 
-锁定手脚动画前检查：
+Check before locking hand/foot animation:
 
-- 手部骨骼点区分了运动关节和接触点；
-- 接触点只控制接触 / 阴影 / 遮挡，不当关节；
-- 手根稳定，长度变化主要来自掌尖方向；
-- 手臂中间帧没有尖肘、尖腕、纸片折角；
-- 脚部有脚根 / 髋 / 接地线和可重建脚轮廓环；
-- 抬脚轨迹是绕髋弧线，不是直线平移；
-- 落地脚底回到同一条接地线；
-- 单脚动作里 COM 落在承重脚上方；
-- 浏览器循环 30 秒没有脚底漂移、手根跳动或层级错位。
+- The hand's rig points distinguish motion joints from contact points;
+- Contact points only control contact/shading/occlusion, they aren't used as joints;
+- The hand root is stable, and length changes mainly come from the palm-tip direction;
+- The arm's in-between frames have no sharp elbows, sharp wrists, or paper-thin creases;
+- The foot has a foot root / hip / ground line and a reconstructible foot contour ring;
+- The foot-lift trajectory is an arc around the hip, not a straight-line translation;
+- The landing foot's sole returns to the same ground line;
+- In single-foot actions, the COM lands above the weight-bearing foot;
+- A 30-second browser loop shows no foot drift, hand-root jitter, or mis-layering.

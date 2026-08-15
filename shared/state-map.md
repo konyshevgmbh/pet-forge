@@ -1,115 +1,115 @@
-# 状态映射表（两路线共用）
+# State map (shared across both routes)
 
-> 桌宠的状态分类 + 跟桌宠运行时（Electron / Tauri / 网页挂件等）的对接接口模板。
-> 不区分产物形态——SVG 路线和 APNG 路线的状态语义完全相同，区别只在文件类型。
+> The desktop pet's state taxonomy + an interface template for hooking up to a desktop-pet runtime (Electron / Tauri / a web widget / etc.).
+> Doesn't distinguish by output format — the SVG route and the APNG route share exactly the same state semantics; they only differ in file type.
 
 ---
 
-## 状态分类（带 loop + 首尾帧关系标注）
+## State taxonomy (with a start/end-frame relationship tag on each)
 
-每个状态都有一个**首尾帧关系**属性，3 类：
+Every state has a **start/end-frame relationship** attribute, of 3 kinds:
 
-- **A** = 循环（loop:true，首=尾）
-- **B** = 一次性·回归型（loop:false，首=尾，做完回原姿）
-- **C** = 一次性·过渡型（loop:false，首≠尾，状态间桥梁）
+- **A** = loop (loop:true, start = end)
+- **B** = one-shot · return type (loop:false, start = end, returns to the original pose when done)
+- **C** = one-shot · transition type (loop:false, start ≠ end, a bridge between states)
 
-**这是跨路线的硬规则**：
-- APNG 路线影响 `gen-video.js --last-frame` 用什么参考图
-- SVG 路线影响 CSS keyframes 0% 和 100% 是否一致 + animation-fill-mode
+**This is a hard rule across both routes**:
+- On the APNG route it affects what reference image `gen-video.js --last-frame` uses
+- On the SVG route it affects whether the CSS keyframes' 0% and 100% match, plus animation-fill-mode
 
-详细决策树见：
+See the detailed decision trees at:
 - APNG: `routes/apng/conventions/loop-and-anchoring.md`
 - SVG: `routes/svg/conventions/loop-states.md`
 
-### 完整状态库（25 个交付状态）
+### The full state library (25 deliverable states)
 
-> 模板包含 25 个 prompt 条目；`mini-peek` 也可以由剪辑得到。
-
-```
-[core states]                                  类型
-   │
-   ├─ idle-dozing      待机呼吸                  A (循环)
-   ├─ idle-living      空闲小动作                A
-   ├─ thinking         思考                      A
-   ├─ working-typing   工作-打字                 A
-   ├─ working-building 工作-建造                 A
-   ├─ working-juggling 工作-玩耍                 A
-   ├─ working-conducting 工作-指挥               A
-   ├─ working-sweeping 工作-擦扫                 A
-   ├─ working-carrying 工作-搬运                 A
-   ├─ sleeping         睡觉                      A
-   ├─ error            XX眼晕倒                  A
-   │
-   ├─ happy            任务完成                  B (回归型)
-   └─ notification     通知/警觉                 B
-
-[idle 装饰]                                    类型
-   │
-   ├─ idle-yawn        打哈欠                    B (回归型, 长闲触发)
-   └─ idle-look        四处张望                  B
-
-[transition 过渡]                              类型
-   │
-   ├─ collapse-sleep   坐倒入睡 (idle→sleep)     C (过渡型) ⚠️
-   ├─ wake             醒来 (sleep→idle)         C ⚠️
-   └─ mini-enter       mini 入场 (场外→mini)     C ⚠️
-
-[reaction 用户交互]                            类型
-   │
-   ├─ react-drag       被拖动                    A (悬浮循环)
-   └─ react-poke       被戳反应                  B (回归型)
-
-[mini mode 6 状态：mini-enter 在 transition 组] 类型
-   │
-   ├─ mini-idle        mini 待机                 A
-   ├─ mini-peek        mini 探头                 B (剪辑或独立)
-   ├─ mini-alert       mini 通知                 A
-   ├─ mini-happy       mini 完成                 A
-   └─ mini-sleep       mini 休眠                 A
-```
-
-⚠️ **C 类只有 3 个但极其关键**——它们是状态机的"桥梁"，少了就会"咔嚓"姿态突变。
-
-### 衔接链示例
+> The template contains 25 prompt entries; `mini-peek` can also be produced by clipping another state.
 
 ```
-正常睡眠链:
-  idle (A) → idle-yawn (B) → idle-dozing (A) → collapse-sleep (C) ← 过渡桥梁
-   → sleeping (A) → wake (C) ← 过渡桥梁 → idle (A)
+[core states]                                  type
+   │
+   ├─ idle-dozing      idle, breathing         A (loop)
+   ├─ idle-living      idle, small motions      A
+   ├─ thinking         thinking                 A
+   ├─ working-typing   working - typing         A
+   ├─ working-building working - building        A
+   ├─ working-juggling working - juggling        A
+   ├─ working-conducting working - conducting    A
+   ├─ working-sweeping working - sweeping        A
+   ├─ working-carrying working - carrying        A
+   ├─ sleeping         sleeping                 A
+   ├─ error            X eyes, fainted          A
+   │
+   ├─ happy            task complete            B (return type)
+   └─ notification     notification/alert       B
+   │
+[idle decorations]                             type
+   │
+   ├─ idle-yawn        yawning                  B (return type, triggered after a long idle)
+   └─ idle-look        looking around           B
+   │
+[transitions]                                  type
+   │
+   ├─ collapse-sleep   sits down to sleep (idle->sleep)     C (transition) ⚠️
+   ├─ wake             waking up (sleep->idle)              C ⚠️
+   └─ mini-enter       entering mini mode (offscreen->mini) C ⚠️
+   │
+[reaction: user interaction]                   type
+   │
+   ├─ react-drag       being dragged            A (floating loop)
+   └─ react-poke       reacting to a poke       B (return type)
+   │
+[mini mode, 6 states; mini-enter is in the transition group] type
+   │
+   ├─ mini-idle        mini idle                A
+   ├─ mini-peek        mini peek                B (clipped, or its own state)
+   ├─ mini-alert       mini alert               A
+   ├─ mini-happy       mini happy               A
+   └─ mini-sleep       mini sleep               A
+```
 
-mini 入场链:
-  idle (A) → mini-enter (C) ← 过渡桥梁 → mini-idle (A)
+⚠️ There are only 3 **type C** states, but they're extremely important — they're the "bridges" of the state machine; without them, poses will change with a jarring "snap."
+
+### Example transition chains
+
+```
+Normal sleep chain:
+  idle (A) -> idle-yawn (B) -> idle-dozing (A) -> collapse-sleep (C) <- bridge
+   -> sleeping (A) -> wake (C) <- bridge -> idle (A)
+
+Mini-mode entry chain:
+  idle (A) -> mini-enter (C) <- bridge -> mini-idle (A)
 ```
 
 ---
 
-## 标准接口（接桌宠运行时）
+## Standard interface (hooking up to a desktop-pet runtime)
 
-桌宠运行时通常会监听各类 agent/editor/runtime event，并按下表映射到状态：
+A desktop-pet runtime typically listens for various agent/editor/runtime events, and maps them to states per the table below:
 
-| Agent Event | 对应状态 | 说明 |
+| Agent event | Mapped state | Notes |
 |---|---|---|
-| Idle (no activity) | `idle` | 默认状态 |
-| Idle (random) | `idle-reading` 等 | 长时间 idle 触发的彩蛋 |
-| UserPromptSubmit | `thinking` | 用户发了消息 |
-| PreToolUse / PostToolUse | `typing` | 单次工具使用 |
-| PreToolUse (3+ sessions) | `building` | 频繁工具使用 |
-| SubagentStart (1) | `juggling` | 起 1 个 subagent |
-| SubagentStart (2+) | `conducting` | 起多个 subagent |
-| PostToolUseFailure | `error` | 工具失败 |
-| Stop / PostCompact | `attention` / `happy` | 任务完成 |
-| PermissionRequest | `notification` | 等待用户授权 |
-| PreCompact | `sweeping` | 上下文压缩中 |
-| WorktreeCreate | `carrying` | 创建 worktree |
-| 60s no events | `sleeping` | 长期空闲 |
+| Idle (no activity) | `idle` | The default state |
+| Idle (random) | `idle-reading`, etc. | Easter eggs triggered by a long idle |
+| UserPromptSubmit | `thinking` | The user sent a message |
+| PreToolUse / PostToolUse | `typing` | A single tool use |
+| PreToolUse (3+ sessions) | `building` | Frequent tool use |
+| SubagentStart (1) | `juggling` | 1 subagent started |
+| SubagentStart (2+) | `conducting` | Multiple subagents started |
+| PostToolUseFailure | `error` | A tool call failed |
+| Stop / PostCompact | `attention` / `happy` | Task complete |
+| PermissionRequest | `notification` | Waiting on user authorization |
+| PreCompact | `sweeping` | Context is being compacted |
+| WorktreeCreate | `carrying` | A worktree was created |
+| 60s with no events | `sleeping` | Long-term idle |
 
-不同运行时可以扩展更多事件；本表只定义 pet-forge 的通用状态语义。
+Different runtimes can extend this with more events; this table only defines pet-forge's general-purpose state semantics.
 
 ---
 
-## 接运行时的最简方式
+## The simplest way to hook up a runtime
 
-一个 theme 至少要提供这些状态文件：
+A theme needs to provide at least these state files:
 
 ```json
 {
@@ -143,92 +143,92 @@ mini 入场链:
 }
 ```
 
-**SVG 路线**：每个值是 `.svg.html` 路径
-**APNG 路线**：每个值是 `.apng` 路径
-**混合**：理论可行（部分 SVG 部分 APNG），但具体支持情况取决于你的运行时实现。
+**SVG route**: every value is a `.svg.html` path
+**APNG route**: every value is a `.apng` path
+**Mixed**: theoretically possible (some SVG, some APNG), but actual support depends on your runtime's implementation.
 
-### Scripted SVG 嵌入
+### Embedding a scripted SVG
 
-如果 SVG 状态内部带脚本（例如 pointer-look、host event、transition sequencing），不要默认用普通 `<img>` 嵌入。
+If an SVG state has a script inside it (e.g. for pointer-look, host events, or transition sequencing), don't default to embedding it with a plain `<img>`.
 
-优先选：
+Prefer:
 
 - `<object data="states/idle.svg" type="image/svg+xml">`
-- webview / iframe 风格的独立文档加载
-- 运行时直接加载 `.svg.html`
+- An iframe/webview-style independent document load
+- Having the runtime load the `.svg.html` directly
 
-普通 `<img>` 适合纯静态或纯 CSS/SMIL 资源；脚本状态通常需要独立文档上下文。
+A plain `<img>` is fine for purely static or CSS/SMIL-only assets; a scripted state usually needs an independent document context.
 
-### Mini mode 的 host 分工
+### Division of labor for mini mode's host
 
-Mini 模式不是 main idle 的缩小版。运行时和状态文件要分工：
+Mini mode isn't just a shrunk-down version of the main idle. The runtime and the state file need a clear division of labor:
 
-- host / window 负责贴边、推出、收回、吸附、窗口位移；
-- mini SVG/APNG 负责角色在当前位置的表演；
-- 不要为了模拟 host 推出而让角色本体在 SVG 内整体乱跳；
-- hover peek 这类动作可以做成补充状态，但不要强行塞进核心 schema。
+- The host/window is responsible for edge-docking, sliding out, retracting, snapping, and window movement;
+- The mini SVG/APNG is responsible for the character's performance at its current position;
+- Don't make the character body jump around wildly inside the SVG just to simulate the host sliding out;
+- A hover-peek type action can be built as a supplementary state, but shouldn't be forced into the core schema.
 
-这条能避免 mini 状态在不同运行时里位置漂移或重复位移。
+This avoids position drift or duplicated displacement for mini states across different runtimes.
 
-### 公开目标验证
+### Verifying against the real, public target
 
-接入运行时或展示站后，验证对象必须是用户实际看到的目标：
+After hooking up to a runtime or a showcase site, the verification target must be what the user actually sees:
 
-- 本地源文件只证明编辑结果；
-- runtime path 证明主题映射正确；
-- public demo 证明部署和引用正确；
-- preview URL 和 production URL 可能是不同快照。
+- A local source file only proves the editing result;
+- The runtime path proves the theme mapping is correct;
+- The public demo proves the deployment and references are correct;
+- The preview URL and the production URL may be different snapshots.
 
-状态问题先分清是动画文件问题、映射问题、部署问题，还是缓存/旧预览问题。
+Figure out first whether a state issue is an animation-file problem, a mapping problem, a deployment problem, or a cache/stale-preview problem.
 
 ---
 
-## 最小可上线集合
+## The minimum viable set to ship
 
-不是所有状态都必须做。第一版能跑的最小集合：
+Not every state needs to be built. The minimum v1 set that can ship:
 
-### 必做（5 个）
+### Required (5)
 
 ```
 idle, typing, thinking, sleeping, happy
 ```
 
-少了任意一个，桌宠都会"穿模"——比如没 idle 就一直 typing 看着累，没 happy 任务完成就没反馈。
+Missing any one of these breaks the illusion — for example, without `idle` the pet is stuck looking like it's typing forever, which is tiring to watch, and without `happy` there's no feedback when a task completes.
 
-### 强烈建议（再 3 个）
+### Strongly recommended (3 more)
 
 ```
 notification, error, carrying
 ```
 
-没这 3 个会缺反馈，但不会"穿模"。
+Without these 3, feedback is missing, but it won't break the illusion.
 
-### 高级（再 5 个）
+### Advanced (5 more)
 
 ```
 working-building, working-juggling, working-conducting, working-sweeping, react-drag
 ```
 
-让桌宠"会反应"，但不是必须。
+These make the pet "responsive," but they're not required.
 
-### Mini 模式（6 个）
+### Mini mode (6)
 
 ```
 mini-idle, mini-enter, mini-peek, mini-alert, mini-happy, mini-sleep
 ```
 
-如果你的桌宠不上 dock / tray，可以不做。
+If your pet doesn't dock to a taskbar/tray, you can skip these.
 
 ---
 
-## 对接其他运行时
+## Hooking up other runtimes
 
 ### Electron
 
-写一个 Electron 主进程，根据状态切换 BrowserWindow 加载的文件：
+Write an Electron main process that switches which file the BrowserWindow loads based on state:
 
 ```js
-// 简化伪代码
+// simplified pseudocode
 const win = new BrowserWindow({ transparent: true, frame: false });
 function setState(state) {
   const file = `states/${state}.svg.html`;
@@ -238,25 +238,25 @@ function setState(state) {
 
 ### Tauri
 
-类似 Electron，配置 `tauri.conf.json` 的 windows 透明 + 无边框，根据 state 切换 webview 加载的文件。
+Similar to Electron — configure `tauri.conf.json`'s windows to be transparent + frameless, and switch which file the webview loads based on state.
 
-### 纯 Web 挂件
+### A plain web widget
 
-最简单：一个 HTML 页面，根据 URL 参数加载对应状态：
+The simplest approach: one HTML page that loads the corresponding state based on a URL parameter:
 
 ```html
 <iframe src="states/idle.svg.html"></iframe>
 ```
 
-JS 监听外部信号（WebSocket / polling）切换 iframe src。
+JS listens for an external signal (WebSocket / polling) to switch the iframe's src.
 
 ---
 
-## 元教训
+## Meta-lessons
 
-1. **状态命名保持通用**：用 `idle / typing / thinking` 不要发明 `wait / coding / pondering`
-2. **每个状态文件大小控制**：SVG < 100KB、APNG < 1MB，否则切换卡
-3. **过渡帧不在本表**：状态切换的过渡（如 idle → sleeping 的 falling-asleep）按需做，但不在 minimum 集合
-4. **状态间衔接看姿态**：所有结尾回到中性姿态的状态，互相切换才不突兀
-5. **不要为每个事件都做独立动画**：合理复用，比如 PreToolUse 和 PostToolUse 都用 typing 即可
-6. **先核真实目标再下结论**：状态是否交付、线上是否更新、运行时是否引用正确，都要看实际加载结果
+1. **Keep state names generic**: use `idle / typing / thinking`, don't invent `wait / coding / pondering`
+2. **Control each state file's size**: SVG < 100KB, APNG < 1MB, or switching states will feel laggy
+3. **Transition frames aren't in this table**: build a transition between states (like idle -> sleeping's falling-asleep) as needed, but it's not part of the minimum set
+4. **Look at the pose when connecting states**: any state that ends back at a neutral pose can switch to any other such state without feeling jarring
+5. **Don't build a dedicated animation for every single event**: reuse sensibly — e.g. both PreToolUse and PostToolUse can just use `typing`
+6. **Verify the real target before drawing a conclusion**: whether a state has actually shipped, whether production has updated, and whether the runtime is referencing the right thing — all need to be checked against the real, loaded result

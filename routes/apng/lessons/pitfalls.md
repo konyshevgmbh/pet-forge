@@ -1,243 +1,243 @@
-# APNG 路线经验教训
+# APNG Route Lessons Learned
 
-> 从 APNG 桌宠工作流和多轮 prompt 调优中沉淀。跨角色、跨题材都适用。
-
----
-
-## ⭐ 核心元教训（按重要性排序）
-
-### 1. 参考图（reference）决定角色一致性
-
-**现象**：每个状态的角色长得不一样，像 25 只不同的猫。
-
-**根本原因**：没有共享参考图作锚点。
-
-**正确做法**：
-- 开工前生 1 张**主参考图**（标准姿势 + 中性表情）
-- 所有循环类状态用主参考图作 `--image` + `--last-frame`
-- 一次性状态（happy / wake）尾帧也用主参考图，确保结束回到 idle
-
-> 实战中建议用 `reference/main-ref.png` 作所有动画首帧/尾帧锚点，跨状态保持视觉统一。
+> Distilled from real APNG desktop pet workflows and many rounds of prompt tuning. Applies across characters and themes.
 
 ---
 
-### 2. 首尾帧关系决定锚定策略（3 类，不是 2 类）
+## ⭐ Core Meta-Lessons (ordered by importance)
 
-**现象 a**：循环动画首尾帧不一样，循环时"咔嚓"。
-**现象 b**：一次性动画结尾姿态错了（happy 完没回 idle / collapse-sleep 完反而坐起来）。
-**现象 c**：过渡动画结尾停在中间姿态。
+### 1. The Reference Image Determines Character Consistency
 
-**根本原因**：把所有动画当成"循环 vs 一次性"两类处理，但实际有 **3 类**：
+**Symptom**: the character looks different in every state, like 25 different cats.
 
-| 类 | loop | 首尾关系 | --last-frame 用什么 |
+**Root cause**: no shared reference image acting as an anchor.
+
+**Correct approach**:
+- Before starting, generate 1 **main reference image** (standard pose + neutral expression)
+- All looping states use the main reference image for both `--image` and `--last-frame`
+- One-shot states (happy / wake) should also use the main reference image as the last frame, to guarantee they end back at idle
+
+> In practice, we recommend using `reference/main-ref.png` as the first/last-frame anchor for all animations, to keep visuals consistent across states.
+
+---
+
+### 2. First/Last-Frame Relationships Determine Anchoring Strategy (3 types, not 2)
+
+**Symptom a**: a looping animation's first and last frames don't match, causing a "snap" when it loops.
+**Symptom b**: a one-shot animation ends in the wrong pose (happy doesn't return to idle / collapse-sleep sits back up instead).
+**Symptom c**: a transition animation ends stuck in a mid-way pose.
+
+**Root cause**: treating all animations as either "looping" or "one-shot," when there are actually **3 types**:
+
+| Type | loop | first/last relationship | What to use for --last-frame |
 |---|---|---|---|
-| **A. 循环** | true | 首=尾（同图） | 跟 `--image` 同一张 |
-| **B. 一次性·回归型** | false | 首=尾（回原姿） | 跟 `--image` 同一张 |
-| **C. 一次性·过渡型** | false | **首≠尾** | **不同的尾帧图** |
+| **A. Looping** | true | first = last (same image) | Same image as `--image` |
+| **B. One-shot · return type** | false | first = last (returns to original pose) | Same image as `--image` |
+| **C. One-shot · transition type** | false | **first ≠ last** | **A different last-frame image** |
 
-C 类是状态间过渡（wake / collapse-sleep / mini-enter），3 个但**关键**——它们是状态机的桥梁。
+Type C is state-to-state transitions (wake / collapse-sleep / mini-enter) — only 3 of them, but **critical**, since they're the bridges of the state machine.
 
-**正确做法**：
-- 使用支持 `--last-frame` / 尾帧锚定的视频模型
-- A 类：`--image X --last-frame X` + prompt 强调 "Seamless loop"
-- B 类：`--image X --last-frame X` + prompt 强调 "Returns to exact starting pose"（**不写 loop**，否则 AI 会做循环）
-- C 类：`--image X --last-frame Y` + prompt 强调 "End pose matches {target state} EXACTLY"（**绝对不写 loop 也不写 returns to starting**）
+**Correct approach**:
+- Use a video model that supports `--last-frame` / last-frame anchoring
+- Type A: `--image X --last-frame X` + prompt emphasizes "Seamless loop"
+- Type B: `--image X --last-frame X` + prompt emphasizes "Returns to exact starting pose" (**never mention loop**, or the AI will loop it)
+- Type C: `--image X --last-frame Y` + prompt emphasizes "End pose matches {target state} EXACTLY" (**never mention loop or returns to starting**)
 
-**详细决策树 + 完整状态分类**：见 `routes/apng/conventions/loop-and-anchoring.md`。
+**Full decision tree + complete state classification**: see `routes/apng/conventions/loop-and-anchoring.md`.
 
-**反面**：不支持尾帧锚定的模型更难做好循环动画和过渡动画。
-
----
-
-### 3. 失败重跑是常态，不要试图"修"
-
-**现象**：生成的视频角色变形 / 镜头偏 / 颜色错，想 ffmpeg 后期修。
-
-**正确做法**：**直接重跑**。AI 生成有随机性，通常需要为每个状态预留多次尝试。
-
-**反面**：花 2 小时后期修一个差视频 = 重跑 5 次的时间，质量还不如重跑。
+**Counter-example**: models that don't support last-frame anchoring make it much harder to get looping and transition animations right.
 
 ---
 
-### 4. Prompt 必须有 negative 段
+### 3. Failed Reruns Are Normal — Don't Try to "Fix" Them
 
-AI 视频生成最常见 4 类翻车，每类都有专属 negative prompt：
+**Symptom**: the generated video's character is deformed / the camera drifted / colors are wrong, and you're tempted to fix it in post with ffmpeg.
 
-| 翻车现象 | Negative prompt |
+**Correct approach**: **just rerun it**. AI generation is inherently random, and you should usually budget multiple attempts per state.
+
+**Counter-example**: spending 2 hours fixing a bad video in post is roughly the time cost of 5 reruns — and the quality still won't match a rerun.
+
+---
+
+### 4. The Prompt Must Have a Negative Section
+
+There are 4 common categories of AI video generation failures, each with its own dedicated negative prompt:
+
+| Failure | Negative prompt |
 |---|---|
-| 尾巴 / 触角爆炸性放大 | `DO NOT inflate or balloon the {tail/antenna/etc.}` |
-| 镜头平移 / 旋转 | `Camera stays completely still. DO NOT rotate or shift the camera angle.` |
-| 加人手 / 道具 | `NO hands, NO fingers, NO human body parts visible.` |
-| 背景出现物体 / 阴影 | `The background must remain a uniform solid green. No shadows, no objects, no gradients.` |
+| Tail / antenna balloons up explosively | `DO NOT inflate or balloon the {tail/antenna/etc.}` |
+| Camera pans / rotates | `Camera stays completely still. DO NOT rotate or shift the camera angle.` |
+| Extra human hands / props added | `NO hands, NO fingers, NO human body parts visible.` |
+| Objects / shadows appear in the background | `The background must remain a uniform solid green. No shadows, no objects, no gradients.` |
 
-**写在 prompt 末尾效果最好**（AI 对末尾指令敏感）。
-
----
-
-### 5. CHARACTER_PREFIX 写得越具体越好
-
-**现象**：用 "a cute cat" 这种抽象描述，每次生成形态不同。
-
-**正确做法**：CHARACTER_PREFIX 包含 6 个维度：
-1. 物种 / 类别
-2. 风格定位（chibi / kawaii / pixel-art ...）
-3. 主体颜色 / 花纹
-4. 主要识别特征（眼睛形状 / 耳朵 / 尾巴）
-5. 描边 / 渲染风格
-6. 背景要求
-
-> CHARACTER_PREFIX 应该是一段完整角色描述，覆盖所有这些维度。一次写好，所有状态都用。
+**Works best placed at the end of the prompt** (the AI pays more attention to trailing instructions).
 
 ---
 
-### 6. API 拥堵时降低并发
+### 5. The More Specific CHARACTER_PREFIX Is, the Better
 
-**现象**：外部 API 排队、限流或连续失败。
+**Symptom**: using an abstract description like "a cute cat" produces a different-looking character every time.
 
-拥堵期不要在同一个失败队列里消耗时间。
+**Correct approach**: CHARACTER_PREFIX should cover 6 dimensions:
+1. Species / category
+2. Style positioning (chibi / kawaii / pixel-art ...)
+3. Main colors / patterns
+4. Key identifying features (eye shape / ears / tail)
+5. Outline / rendering style
+6. Background requirement
 
-**应对**：拉长批量任务间隔、降低并发、稍后重试，或按自己的服务账号替换为等价能力的模型。
-
----
-
-### 7. Mini 状态不是 idle 的缩小版
-
-**现象**：写 mini-idle prompt 想着"就是缩小版 idle"，结果 AI 生成的 mini-idle 画面很奇怪。
-
-**正确做法**：mini-idle 是**完全不同的姿态**：
-- main idle = 坐姿 / 站姿
-- mini-idle = 趴姿 / 仰躺 / 侧卧 / 卷成球
-
-mini 模式的语义是"在 dock / tray 角落不显眼"，姿态本身就该是收缩 / 放松的。
+> CHARACTER_PREFIX should be a complete character description covering all these dimensions. Write it well once, and reuse it for every state.
 
 ---
 
-### 8. 绿幕颜色全链路一致
+### 6. Reduce Concurrency When the API Is Congested
 
-**现象**：参考图绿幕是 `#00FF00`，prompt 写 `#00B140`，抠图工具默认 `#00B140`，结果绿边抠不干净。
+**Symptom**: the external API is queueing, rate-limiting, or failing repeatedly.
 
-**正确做法**：开工前**定一个绿幕颜色**，全链路统一；如果生成视频的实际绿幕偏色，以输出视频里采样到的真实背景色为准：
-- 参考图：使用同一绿幕色
-- prompt：写同一绿幕色，并要求 uniform solid green
-- chroma_key 配置：用参考色或从视频采样出的真实色
+Don't burn time in the same failing queue during congestion.
 
-**推荐 `#00B140`**：比 `#00FF00` 不容易跟黄绿色花纹冲突。
+**Response**: increase the interval between batch jobs, lower concurrency, retry later, or swap in an equivalent model on your own service account.
 
 ---
 
-### 9. 批量生成带 60s 间隔
+### 7. Mini States Are Not Scaled-Down Idle
 
-**现象**：连续 10 个 prompt 跑下来，后面 7 个全 429（限流）。
+**Symptom**: writing the mini-idle prompt as "just a smaller version of idle" produces a strange-looking mini-idle result.
 
-**正确做法**：`batch-gen.js` 默认 60s 间隔，**不要改成更短**。
+**Correct approach**: mini-idle is a **completely different pose**:
+- main idle = sitting / standing
+- mini-idle = lying flat / on its back / on its side / curled into a ball
 
-> 不同服务和账号的限流规则会变化；批量任务应保守设置间隔。
+The semantics of mini mode are "tucked unobtrusively in a dock/tray corner" — the pose itself should already be compact and relaxed.
 
 ---
 
-### 10. 单状态预算
+### 8. Keep the Green Screen Color Consistent End-to-End
 
-**经验模型**：
-- 单状态通常需要多次生成尝试
-- 单状态后期通常包括抠图、检查、重建和锁定
-- 具体 API 成本、排队时间和成功率以服务当前文档为准
+**Symptom**: the reference image's green screen is `#00FF00`, the prompt says `#00B140`, the chroma-key tool defaults to `#00B140`, and the result is a green fringe that won't clean up.
 
-状态数越多，等待、重跑和人工检验成本会线性放大。先做 1 个 hero 状态，确认路线可行后再扩展。
+**Correct approach**: **pick one green screen color** before starting, and keep it consistent end-to-end; if the actual green in the generated video drifts, use the real background color sampled from the output video as the source of truth:
+- Reference image: use the same green
+- Prompt: state the same green, and require uniform solid green
+- chroma_key config: use the reference color, or the real color sampled from the video
 
-### 11. 绿幕 prompt 要禁止速度线和地面线索
+**Recommended: `#00B140`** — less likely to clash with yellow-green patterns than `#00FF00`.
 
-**现象**：角色动作不错，但背景出现速度线、投影、地面、烟尘或光效，抠图后留下脏边。
+---
 
-**正确做法**：prompt 末尾显式写：
+### 9. Batch Generation Needs a 60s Interval
+
+**Symptom**: after running 10 prompts back to back, the last 7 all fail with 429 (rate limited).
+
+**Correct approach**: `batch-gen.js` defaults to a 60s interval — **don't shorten it**.
+
+> Rate-limit rules vary by service and account; batch jobs should use a conservative interval.
+
+---
+
+### 10. Per-State Budget
+
+**Rule of thumb**:
+- A single state usually needs multiple generation attempts
+- Post-processing for a single state usually includes chroma-keying, review, rebuilding, and locking
+- Actual API cost, queue time, and success rate depend on the service's current documentation
+
+The more states you have, the more waiting, rerun, and manual review costs scale linearly. Build 1 hero state first, confirm the route works, then expand.
+
+### 11. Green Screen Prompts Must Forbid Speed Lines and Ground Cues
+
+**Symptom**: the character's motion looks fine, but speed lines, shadows, ground, dust, or lighting effects show up in the background, leaving dirty edges after chroma-keying.
+
+**Correct approach**: explicitly state at the end of the prompt:
 
 ```text
 Uniform solid green background only. No shadows, no floor, no speed lines, no motion streaks, no particles, no props, no camera movement.
 ```
 
-对走路、爬行、跳跃这类横向动作，优先让角色做 treadmill motion：肢体在动，但身体中心基本留在画面中央。真正的窗口位移交给 host。
+For horizontal motions like walking, crawling, or jumping, prefer having the character perform treadmill-style motion: the limbs move, but the body's center stays roughly fixed in the frame. Leave actual on-screen displacement to the host.
 
-### 12. 抠图后要做边缘体检
+### 12. Give Edges a Checkup After Chroma-Keying
 
-**现象**：APNG 在白底看还行，放到深色桌面上出现灰边、绿边或半透明脏边。
+**Symptom**: the APNG looks fine on a white background, but shows gray edges, green fringing, or semi-transparent dirty edges on a dark desktop.
 
-**正确做法**：
-- 在浅色、深色、透明棋盘三种背景下看边缘
-- 灰边走 defringe / rebuild
-- 绿边走 despill 或重新采样 key color
-- 半透明阴影如果不是角色本体的一部分，宁可重跑视频
+**Correct approach**:
+- Check edges against light, dark, and transparent-checkerboard backgrounds
+- Gray fringing: use defringe / rebuild
+- Green fringing: use despill or resample the key color
+- If semi-transparent shadow isn't actually part of the character, it's better to just rerun the video
 
-不要只看播放器默认背景。
+Don't judge purely from the player's default background.
 
-预览和定稿分两档：
+Preview and final-delivery quality are two different tiers:
 
-- 快速预览：先用工具默认档，确认动作、构图、绿幕是否值得继续；
-- 定稿前：试一次更高质量档，例如 `--height 400 --max-colors 256 --fps 12`；
-- 如果体积过大，再按目标 runtime 的限制回调 height、fps 或 colors。
+- Quick preview: use the tool's default settings first, to confirm the motion, composition, and green screen are worth continuing with;
+- Before finalizing: try a higher-quality pass, e.g. `--height 400 --max-colors 256 --fps 12`;
+- If the file size is too large, tune height, fps, or colors back down to fit the target runtime's constraints.
 
-不要用低清预览档直接判断最终边缘质量。
-
----
-
-## 反模式（don't）
-
-- ❌ **不写 CHARACTER_PREFIX 直接写动作 prompt**：每次生成长得不一样
-- ❌ **循环类不用尾帧锚定**：首尾姿态很容易对不齐
-- ❌ **失败视频强行 ffmpeg 修**：时间成本高于重跑
-- ❌ **绿幕颜色不统一**：抠图阶段必出问题
-- ❌ **Prompt 没 negative 段**：AI 翻车 4 大类必踩 1-2 个
-- ❌ **批量生成不带间隔**：限流 429 死循环
-- ❌ **Mini 状态当 main 的缩小版**：mini 应该是不同姿态
-- ❌ **把 host 位移画进 APNG**：贴边、推出、窗口移动交给运行时，APNG 只做原地表演
-- ❌ **只在一种背景上看抠图结果**：透明资产必须换背景验边
+Don't judge final edge quality from a low-res preview pass.
 
 ---
 
-## 进阶心智模型
+## Anti-Patterns (don't)
 
-### "尾帧锚定 + 起止文案"双保险
-
-循环动画必做两件事：
-
-1. **技术层**：`--last-frame` 用首帧图
-2. **prompt 层**：末尾加 `Seamless loop animation. The last frame must connect perfectly back to the first frame. The character returns to the exact starting pose.`
-
-少一层都可能翻车。
-
-### "重跑预算"心态
-
-每个状态预留 **3 次生成预算**。不要跑一次就上头改 prompt——AI 生成本身有方差。
-
-跑 3 次取最好的，比改 prompt 跑 1 次质量高得多。
-
-### "按模型能力分工"
-
-- 试 prompt 阶段：优先低成本、低并发、可接受失败的模型
-- 正式生产：优先支持关键能力、输出稳定、可复现的模型
-
-这个分工通常比单一路线更稳，也避免把所有状态绑定到一个队列或模型上。
+- ❌ **Writing the motion prompt without a CHARACTER_PREFIX**: the character looks different every generation
+- ❌ **Not using last-frame anchoring for looping states**: the first/last pose easily won't line up
+- ❌ **Forcing a fix on a failed video with ffmpeg**: costs more time than a rerun
+- ❌ **Inconsistent green screen color**: guarantees problems at the chroma-key stage
+- ❌ **A prompt with no negative section**: you'll hit 1-2 of the 4 major AI failure categories
+- ❌ **Batch generation with no interval**: a death spiral of 429 rate-limit errors
+- ❌ **Treating mini states as a scaled-down main state**: mini should be a different pose
+- ❌ **Baking host displacement into the APNG**: edge-hugging, pushing out, window movement belong to the runtime — the APNG should only perform in place
+- ❌ **Only checking chroma-key results against one background**: transparent assets must be checked against multiple backgrounds to validate edges
 
 ---
 
-## 跟 SVG 路线对比
+## Advanced Mental Models
 
-| 维度 | APNG 路线（本路线） | SVG 路线 |
+### The "Last-Frame Anchoring + Start/End Wording" Double Safeguard
+
+Every looping animation needs two things:
+
+1. **Technical layer**: `--last-frame` using the first-frame image
+2. **Prompt layer**: end with `Seamless loop animation. The last frame must connect perfectly back to the first frame. The character returns to the exact starting pose.`
+
+Missing either layer risks failure.
+
+### The "Rerun Budget" Mindset
+
+Budget **3 generation attempts** per state. Don't get anxious and rewrite the prompt after just one run — AI generation has inherent variance.
+
+Running 3 times and picking the best result gives much better quality than rewriting the prompt and running once.
+
+### "Divide Labor by Model Capability"
+
+- During prompt experimentation: prefer low-cost, low-concurrency models where failure is acceptable
+- For production runs: prefer models that support the key capabilities you need, with stable, reproducible output
+
+This division of labor is generally more reliable than a single approach, and avoids tying every state to one queue or model.
+
+---
+
+## Comparison with the SVG Route
+
+| Dimension | APNG Route (this route) | SVG Route |
 |---|---|---|
-| 单状态时间 | 0.5-2 小时（含等待） | 1 天 - 1 周 |
-| 单状态成本 | 取决于外部 API | 本地免费 |
-| 微调成本 | 高（要重生） | 低（改 JS） |
-| 循环无缝 | 难（要尾帧锚定 + 后期） | 完美（CSS） |
-| 风格化能力 | 强（AI 啥都能生） | 弱（受限矢量化） |
-| 文件大小 | 几百 KB - 1MB | < 100KB |
-| 用户技能 | prompt 工程师 | 前端 + 动画基础 |
+| Time per state | 0.5-2 hours (including waiting) | 1 day - 1 week |
+| Cost per state | Depends on external API | Free, local |
+| Fine-tuning cost | High (requires regeneration) | Low (edit JS) |
+| Seamless looping | Hard (needs last-frame anchoring + post-processing) | Perfect (CSS) |
+| Stylization power | Strong (AI can generate almost anything) | Weaker (limited by vectorization) |
+| File size | Hundreds of KB - 1MB | < 100KB |
+| User skill needed | Prompt engineering | Frontend + basic animation |
 
-**何时选 APNG 路线**：
-- 美术能力一般，想快出成品
-- 角色风格 SVG 难表达（毛茸茸、写实、复杂渐变）
-- 可以接受外部 API 成本和重跑
-- 不要求循环完美无缝
+**When to choose the APNG route**:
+- Your art skills are limited and you want a finished result fast
+- The character's style is hard to express in SVG (fur, realism, complex gradients)
+- You can accept external API cost and reruns
+- You don't need perfectly seamless loops
 
-**何时选 SVG 路线**：
-- 想要循环完美 + 文件小 + 热改
-- 美术能力 OK，会写一点 JS
-- 想要每个参数都可调
-- 想尽量减少外部 API 成本
+**When to choose the SVG route**:
+- You want perfect loops + small files + hot-reload
+- Your art skills are OK and you can write a little JS
+- You want every parameter to be tunable
+- You want to minimize external API cost

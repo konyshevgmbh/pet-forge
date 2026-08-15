@@ -1,158 +1,158 @@
-# 身体运动轴线约定
+# Body motion axis conventions
 
-> 身体转向不是整块 3D 旋转，也不是完全锁死；先建立身体轴和部件锚点，再让轮廓、悬挂配饰、脚和手按同一套语义接上。
+> A body turn is neither a whole-block 3D rotation nor fully locked in place; first establish a body axis and part anchors, then hook up the silhouette, hanging accessories, feet, and hands under one consistent semantics.
 
-## 先把轴线变成锚点系统
+## Turn the axis into an anchor system first
 
-概念图里的旋转轴只是意识。进入 SVG 动画时，轴线必须落成可计算锚点。通用 rig 规则见 `rig-first.md`。
+The rotation axis in a concept sketch is just an idea. Once you move into SVG animation, the axis has to land as computable anchors. For the general rig rules, see `rig-first.md`.
 
-建议先标这些点：
+Suggested anchors to mark first:
 
-- 脸和身体衔接：脸底左 / 中 / 右，身体顶左 / 中 / 右；
-- 肩线：左肩、右肩；
-- 身体中轴：轴顶、轴心、轴底；
-- 身体左右边界：左侧轮廓点、右侧轮廓点；
-- 身体底部参考：左髋 / 右髋；
-- 悬挂配饰：上缘中点、挂点、尖端；
-- 手：手根、弯折点、腕 / 爪根、掌尖；
-- 脚：腿根、膝点、脚踝、脚心、脚尖、脚跟、落地点。
+- Face-to-body join: face-bottom left/center/right, body-top left/center/right;
+- Shoulder line: left shoulder, right shoulder;
+- Body center axis: axis top, axis center, axis bottom;
+- Body left/right boundary: left contour point, right contour point;
+- Body bottom reference: left hip / right hip;
+- Hanging accessory: top-edge midpoint, attachment point, tip;
+- Hand: hand root, bend point, wrist/paw root, palm tip;
+- Foot: leg root, knee point, ankle, sole, toe, heel, ground-contact point.
 
-锚点词典的作用是把“拖一个身体 path”改成“移动一根身体轴，并让轮廓围绕轴自然变化”。
+The point of an anchor dictionary is to turn "drag a body path around" into "move a body axis, and let the silhouette change naturally around that axis."
 
-## 身体转向的边界
+## The boundaries of a body turn
 
-2D 桌宠不一定需要身体像 3D 模型一样整块旋转。
+A 2D desktop pet doesn't necessarily need its body to rotate as a whole block the way a 3D model would.
 
-更稳的分工：
+A more stable division of labor:
 
-- 头脸负责最强方向变化；
-- 身体只做中轴和轮廓暗示；
-- 悬挂配饰挂在身体轴上，作为方向参考；
-- 脚和手在身体终点确认后再接入。
+- The head/face carries the strongest directional change;
+- The body only does axis and silhouette hinting;
+- Hanging accessories hang off the body axis, as a directional reference;
+- Feet and hands are hooked up only after the body's endpoint is confirmed.
 
-完全锁死身体会缺少方向感；重画成复杂 3D 身体又容易变成另一只角色。身体转向通常应该是轻量的轴线偏移和轮廓再分配。
+Fully locking the body down loses any sense of direction; redrawing it as a complex 3D body easily turns it into a different character. A body turn should usually be a lightweight axis offset plus a redistribution of the silhouette.
 
-## 中轴移动，边缘钉死
+## Move the center axis, pin down the edges
 
-身体左 / 右转可从这条规则起步：
+Left/right body turns can start from this rule:
 
-- 左右边缘权重低，不要整块滑走；
-- 身体中轴权重大，负责方向变化；
-- 上半身跟随更多，底部跟随少一点，重心更稳；
-- `0%` 必须回到原始母版身体。
+- Low weight at the left/right edges — they must not slide as a whole block;
+- High weight at the body's center axis — it carries the directional change;
+- The upper body follows more, the bottom follows less, keeping the center of gravity more stable;
+- `0%` must return to the original master body.
 
-概念上：
+Conceptually:
 
 ```text
-水平位移 = 中轴幅度 × 横向钟形权重 × 纵向权重 × 进度
+horizontal displacement = axis amplitude × horizontal bell-curve weight × vertical weight × progress
 ```
 
-这和脸部转向的思路一致：边界别乱跑，中心承担方向变化，中间平滑过渡。
+This matches the thinking behind face turns: don't let the boundary wander, let the center carry the directional change, and transition smoothly in between.
 
-做 45 度身体转向时，优先用：
+When doing a 45-degree body turn, prefer:
 
-- 中轴轻微偏移；
-- 远近侧边缘钉住或低权重；
-- 上半身比下半身跟随更多；
-- 配饰挂点跟随身体轴；
-- 手脚在身体终点确认后再重新接入。
+- A slight offset of the center axis;
+- Pinning down the far/near edges, or giving them low weight;
+- The upper body following more than the lower body;
+- Accessory attachment points following the body axis;
+- Hands and feet only being re-hooked up after the body's endpoint is confirmed.
 
-这不是完整 3D 旋转，也不是重新画一个新身体。目标是让方向感成立，同时保持同一只角色。
+This is not a full 3D rotation, and it's not redrawing a new body. The goal is to make the sense of direction land, while staying the same character.
 
-## 四段 cubic 拓扑
+## Four-segment cubic topology
 
-如果身体原本是一个圆润闭合 path，不要把每个数字都当成轮廓点硬推。
+If the body was originally one smooth closed path, don't treat every number in it as a contour point to be forced around.
 
-更稳的做法：
+A more stable approach:
 
-1. 以原始身体 path 作为 `0%` 真相源。
-2. 把身体理解成四段 cubic：`轴顶 -> 左侧 -> 轴底 -> 右侧 -> 轴顶`。
-3. 只移动主体语义锚点：顶点、左侧、底部、右侧。
-4. 记录原始手柄比例。
-5. 根据新主体锚点成对重算手柄。
-6. 拼回同样的四段 cubic，点顺序不变。
+1. Use the original body path as the `0%` source of truth.
+2. Understand the body as four cubic segments: `axis top -> left side -> axis bottom -> right side -> axis top`.
+3. Only move the main semantic anchors: top, left, bottom, right.
+4. Record the original handle ratios.
+5. Recompute the handles in pairs based on the new main anchors.
+6. Reassemble into the same four cubic segments, with the point order unchanged.
 
-这样姿态可以变，path 拓扑不乱。中间帧也更容易插值，不会出现尖点、塌陷或抽筋曲线。
+This way the pose can change without scrambling the path topology. In-between frames are also easier to interpolate, without cusps, collapse, or cramped curves.
 
-中间帧不能来自另一套模型。`0% / 50% / 100%` 都应该由同一套锚点和四段 cubic 规则生成；不要 `0%` 用母版 raw path、`100%` 用重建 path，否则过渡会在中段跳边。
+In-between frames can't come from a different model. `0% / 50% / 100%` should all be generated from the same anchors and the same four-segment cubic rule; don't use the master's raw path for `0%` and a rebuilt path for `100%`, or the transition will jump at the edges partway through.
 
-## 配饰跟随身体轴
+## Accessories follow the body axis
 
-围巾、吊牌、挂饰这类悬挂配饰是身体方向的可见证据。
+Hanging accessories like scarves, tags, and charms are visible evidence of the body's direction.
 
-规则：
+Rules:
 
-- 悬挂配饰属于身体层，不属于头部层；
-- 挂点跟身体中轴绑定；
-- 配饰在自身高度读取身体轴位移，再乘跟随系数；
-- 头转时配饰不要跟脸漂；
-- 身体转时配饰也不要完全锁死。
+- Hanging accessories belong to the body layer, not the head layer;
+- The attachment point is bound to the body's center axis;
+- The accessory reads the body axis's displacement at its own height, then multiplies by a follow coefficient;
+- When the head turns, the accessory shouldn't drift along with the face;
+- When the body turns, the accessory shouldn't be fully locked in place either.
 
-如果配饰跟头走，会像贴在脸上；如果配饰完全不动，身体转向缺少参照。
+If the accessory follows the head, it'll look stuck to the face; if the accessory doesn't move at all, the body turn loses its point of reference.
 
-## 脚和手后接
+## Hooking up feet and hands afterward
 
-身体终点确认后，再分别接脚和手。详细手脚骨骼点见 `limb-rig-points.md`。
+Once the body's endpoint is confirmed, hook up the feet and hands separately. For detailed limb rig points, see `limb-rig-points.md`.
 
-脚：
+Feet:
 
-- 先锁身体，再调脚的 `100%` 终点；
-- 近侧脚可以通过竖长豆形等中间形态过渡；
-- 如果终点来自镜像或翻转，不要机械按 toe 对 toe、heel 对 heel 插值；
-- 必要时按画面方位重映射端点，保证右侧轮廓接右侧、左侧轮廓接左侧。
+- Lock the body first, then tune the foot's `100%` endpoint;
+- The near-side foot can transition through an in-between shape like a tall, narrow bean;
+- If the endpoint comes from a mirror/flip, don't mechanically interpolate toe-to-toe and heel-to-heel;
+- Remap the endpoints by on-screen orientation where needed, to make sure the right-side contour connects to the right side and the left-side contour connects to the left side.
 
-手：
+Hands:
 
-- group transform 只负责位置和旋转；
-- 长度和厚度变化应在 path 点级别做；
-- 手根权重为 0，固定住；
-- 越靠掌尖，越吃满长度 / 厚度变化；
-- 近侧手需要进入前景层时，明确它和头脸、悬挂配饰的层级关系。
+- The group transform is only responsible for position and rotation;
+- Length and thickness changes should happen at the path-point level;
+- The hand root has 0 weight — it's fixed;
+- The closer to the palm tip, the more it takes on the full length/thickness change;
+- When the near-side hand needs to move into the foreground layer, be explicit about its layering relationship with the head/face and hanging accessories.
 
-不要用 group scale 假装手臂变长。靠身体的那段也会一起缩放，视觉上会像整条手被拉扯，而不是从掌尖方向生长。
+Don't fake an elongated arm with a group scale. The segment near the body would scale along with it too, and visually it'll look like the whole arm is being stretched, rather than growing from the palm-tip direction.
 
-手脚不是身体轴的临时补丁。它们有自己的骨骼点、接触点和重心规则；身体只负责提供它们要接上的父级锚点。
+Hands and feet aren't a temporary patch on the body axis. They have their own rig points, contact points, and center-of-gravity rules; the body's only job is to provide the parent anchor they hook up to.
 
-## 确认包
+## The confirmed package
 
-身体转向最终应该导出 confirmed keyframe 包，而不是只停在 tuner。
+A body turn should ultimately export a confirmed keyframe package, not just stop at the tuner stage.
 
-建议：
+Recommended:
 
-- 左 / 右方向都导出；
-- 每个方向至少有 `0% / 50% / 100%`；
-- `0%` 等于正脸 idle；
-- 右转如果由左转镜像生成，必须保证严格镜像；
-- 导出文件不包含 debug guide、overlay 或 tuner 属性；
-- 记录使用了哪些身体、脚、手、尾巴、配饰规则。
+- Export both the left and right directions;
+- Every direction has at least `0% / 50% / 100%`;
+- `0%` equals the front-facing idle;
+- If the right turn is generated by mirroring the left turn, it must be a strict mirror;
+- The exported file contains no debug guides, overlays, or tuner-only attributes;
+- Record which body, foot, hand, tail, and accessory rules were used.
 
-## 重心扩展
+## Extending to center of gravity
 
-走路、踮脚、单脚承重时，不要只问“哪个部件动”。
+For walking, standing on tiptoe, or bearing weight on one foot, don't just ask "which part is moving."
 
-还要问：
+Also ask:
 
-- 身体轴在哪里；
-- 重心轴在哪里；
-- 哪只脚在承重；
-- 身体是否移动到承重脚上方；
-- 胯部、脚、身体 transform 是否来自同一套姿态。
+- Where is the body axis;
+- Where is the center-of-gravity axis;
+- Which foot is bearing the weight;
+- Has the body moved to be above the weight-bearing foot;
+- Do the hips, foot, and body transforms all come from the same pose.
 
-单脚抬起来但重心不补偿，角色会像要摔倒。
+If one foot lifts but the center of gravity doesn't compensate, the character will look like it's about to fall over.
 
-脚部抬起、踮脚和走路的具体规则见 `limb-rig-points.md`。身体轴页只判断父级姿态：重心有没有跟承重脚对齐，身体和髋部有没有从同一套姿态生成。
+For the specific rules of lifting a foot, standing on tiptoe, and walking, see `limb-rig-points.md`. The body-axis page only judges the parent pose: whether the center of gravity is aligned with the weight-bearing foot, and whether the body and hips are generated from the same pose.
 
-## 验收清单
+## Acceptance checklist
 
-锁定身体转向前检查：
+Check before locking a body turn:
 
-- 锚点诊断页能显示身体轴、肩线、悬挂配饰、脚、手；
-- `0%` 逐字或视觉上等于母版；
-- `50%` 不尖、不塌、不变成纸片；
-- 身体左右边界没有整块滑走；
-- 悬挂配饰跟随身体轴，不跟头漂；
-- 脚中间帧没有 toe / heel 互穿；
-- 手根稳定，长度变化来自掌尖方向；
-- 近侧手、悬挂配饰、头脸层级关系清楚；
-- 导出 confirmed 包含 `0% / 50% / 100%`；
-- 浏览器预览 30 秒无漂移或错层。
+- The anchor diagnostic page can show the body axis, shoulder line, hanging accessories, feet, and hands;
+- `0%` equals the master literally or visually;
+- `50%` isn't sharp, doesn't collapse, doesn't turn paper-thin;
+- The body's left/right boundary doesn't slide as a whole block;
+- Hanging accessories follow the body axis, not drifting with the head;
+- Foot in-between frames have no toe/heel interpenetration;
+- The hand root is stable, and length changes come from the palm-tip direction;
+- The layering relationship between the near-side hand, hanging accessories, and the head/face is clear;
+- The exported confirmed package includes `0% / 50% / 100%`;
+- 30-second browser preview shows no drift or mis-layering.

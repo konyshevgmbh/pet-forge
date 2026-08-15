@@ -1,20 +1,20 @@
-# 分层母版约定
+# Layered master conventions
 
-> 当一个角色会扩展到多个状态时，先维护一份 layered master。不要把某个状态导出页反向当母版。
+> Once a character is going to expand into multiple states, maintain a layered master first. Don't take some state's export page and reverse-engineer it back into the master.
 
-## 母版职责
+## The master's responsibilities
 
-母版只负责三件事：
+The master is only responsible for three things:
 
-1. 稳定角色识别锚点：头、身体、眼睛、嘴、手脚、道具、主色板。
-2. 提供可复制到状态文件的干净部件。
-3. 给动画留下明确锚点和命名，不承载某个状态的临时节奏。
+1. Stabilizing the character's identifying anchors: head, body, eyes, mouth, hands/feet, props, primary color palette.
+2. Providing clean parts that can be copied into state files.
+3. Leaving clear anchors and naming for animation, without carrying any single state's temporary rhythm.
 
-状态文件可以复制母版部件并做姿态调整；母版不要被某个状态的 debug keyframe、tuner 参数或临时 helper 污染。
+State files can copy master parts and adjust the pose; the master itself shouldn't get polluted by any one state's debug keyframes, tuner parameters, or temporary helpers.
 
-## 命名和分组
+## Naming and grouping
 
-给可动画部件稳定命名：
+Give animatable parts stable names:
 
 ```svg
 <g id="head" data-layer="body" data-part="head">
@@ -23,29 +23,29 @@
 <g id="hand-left" data-layer="limb" data-part="hand">
 ```
 
-建议：
+Recommendations:
 
-- 用 `id` 表示唯一部件；
-- 用 `data-part` 表示部件类型；
-- 用 `data-layer` 表示层级语义；
-- 用 `data-origin` 或注释记录关键 pivot / 接触点；
-- 左右对称部件使用 `*-left` / `*-right`，不要混用 `l-*`、`right*` 等多套命名。
+- Use `id` for a unique part;
+- Use `data-part` for the part type;
+- Use `data-layer` for the layer semantics;
+- Use `data-origin` or a comment to record key pivots/contact points;
+- Left/right symmetric parts use `*-left` / `*-right` — don't mix multiple naming schemes like `l-*`, `right*`, etc.
 
-## 可动画拆层
+## Splitting into animatable layers
 
-优先拆出未来会独立动的东西：
+Prioritize splitting out things that will need to move independently in the future:
 
-- 眼睛拆 `eye-fill`、`eye-highlight`，复杂表情再加 eye-shape library；
-- 嘴、眉、腮红用独立 group，便于表情替换；
-- 手、脚、尾巴、耳朵、触角等肢体不要并进身体 path；
-- 道具和角色本体分层，道具不要绑死在身体轮廓里；
-- 阴影、遮挡片、接触暗边单独命名，避免后续不知道它服务哪个动作。
+- Split eyes into `eye-fill`, `eye-highlight`, and add an eye-shape library for more complex expressions later;
+- Give the mouth, eyebrows, and blush independent groups, to make expression swaps easy;
+- Don't merge limbs — hands, feet, tail, ears, antennae — into the body path;
+- Keep props on a separate layer from the character body; don't lock a prop into the body's silhouette;
+- Name shadows, occlusion pieces, and contact shading separately, so it's clear later which action they serve.
 
-如果一个形状只在单个状态里出现，把它放到状态文件；如果多个状态都会用，再沉淀回母版或 library。
+If a shape only ever appears in a single state, keep it in that state's file; if multiple states will use it, promote it back into the master or a library.
 
-## 变换默认值
+## Default transform values
 
-母版里给可动画部件显式写清楚 transform 语义：
+In the master, explicitly spell out the transform semantics for animatable parts:
 
 ```css
 #hand-left,
@@ -57,31 +57,31 @@
 }
 ```
 
-具体 pivot 可以在状态文件里覆盖，但不要依赖浏览器默认 origin。默认 origin 不稳定，是很多“部件飞走”的源头。
+The specific pivot can be overridden in a state file, but don't rely on the browser's default origin. The default origin is unstable and is the source of a lot of "the part flew off" bugs.
 
-## 开发期和导出期
+## Development phase vs. export phase
 
-开发期可以为了效率引用母版或 library：
+During development, it's fine to reference the master or a library for efficiency:
 
-- tuner 可以读取母版片段；
-- 草稿页可以用 helper script 注入部件；
-- library 可以作为复制源。
+- The tuner can read fragments from the master;
+- A draft page can inject parts via a helper script;
+- The library can serve as a copy source.
 
-交付期必须回到自包含：
+At delivery time, you must go back to being self-contained:
 
-- canonical state 内联所需 SVG、CSS、JS；
-- 不跨文件 `<use href>` 引部件；
-- 不依赖本地 fetch 才能显示角色；
-- showcase/runtime 加载的文件就是能独立验收的文件。
+- The canonical state inlines all the SVG, CSS, and JS it needs;
+- No cross-file `<use href>` references to parts;
+- No dependency on a local fetch just to display the character;
+- The file loaded by the showcase/runtime is the same file that can be independently accepted.
 
-详见 `single-file.md` 和 `tuner-to-canonical.md`。
+See `single-file.md` and `tuner-to-canonical.md` for details.
 
-## 母版变更纪律
+## Discipline for changing the master
 
-改母版前先问三个问题：
+Before editing the master, ask three questions:
 
-1. 这是角色结构改动，还是某个状态的姿态改动？
-2. 这个改动会影响哪些已锁定状态？
-3. 改完后是否需要重新同步 canonical 状态？
+1. Is this a structural change to the character, or a pose change for one specific state?
+2. Which already-locked states will this change affect?
+3. Will the canonical states need to be re-synced after this change?
 
-如果只是某个状态需要临时姿态，优先改状态文件。只有会被多个状态复用的结构变化，才进母版。
+If it's just a temporary pose needed for one state, prefer editing the state file. Only structural changes that will be reused by multiple states belong in the master.

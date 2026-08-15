@@ -1,301 +1,302 @@
-# 通用元教训（两路线共用）
+# General meta-lessons (shared across both routes)
 
-> 不分 SVG / APNG，做桌宠这件事本身的核心心法。从多个 SVG/APNG 桌宠项目中提取。
-
----
-
-## ⭐ 1. 先做 1 个 hero 状态磨到位再扩
-
-**现象**：上来铺 21 状态规划表，每个都做 30% 完成度。
-
-**结果**：21 个半成品，没有一个能拿出手。
-
-**正确做法**：
-- **第 1 个状态磨到锁定**（通常先按"数天"预算，不要按"几分钟"预算）
-- 锁定后再开第 2 个，用第 1 个验证过的工作流
-- 5-10 个锁定后再考虑全集合
-
-**理由**：第 1 个状态是工作流的"压力测试"——工具链 / preset / API key / 桌宠运行时对接，第一个跑通了，后面才是流水线作业。
+> The core mindset for making desktop pets, independent of SVG vs. APNG. Extracted from multiple SVG/APNG desktop pet projects.
 
 ---
 
-## ⭐ 2. 不要一上来铺 21 个状态
+## ⭐ 1. Polish 1 hero state to done first, then expand
 
-**现象**：看完整案例有二十多个状态，新人觉得"这是标准配置我也要"。
+**Symptom**: jumping straight into a 21-state planning sheet, each one done to 30% completion.
 
-**真相**：完整状态集通常来自多轮迭代和资产复用，不是一次生成完成。新人不应该按"一口气铺全集"开工。
+**Result**: 21 half-finished pieces, none of them presentable.
 
-**正确做法**：
-- 第一版做最小集合（5 个核心状态）
-- 跑通工作流 + 接入运行时
-- 觉得有趣再扩到 12 个
-- 真的爱这个项目再扩到 20+
+**Correct approach**:
+- **Polish the first state through to being locked** (budget it in "days," not "minutes")
+- Only start the 2nd once the first is locked, using the workflow validated by the first
+- Only consider the full set once 5-10 states are locked
 
-**反面**：上来 21 个全烂尾，最后一个都不能用。
-
----
-
-## ⭐ 3. 角色一致性是工程问题不是审美问题
-
-**现象**：第 8 个状态做完发现"咦这只跟第 1 个不太一样"。
-
-**根本原因**：没在工程层面**钉死**角色识别锚点。
-
-**SVG 路线的钉法**：
-- 共用 path 资产（眼形 / 嘴形 / 耳朵）抽到 `library/`
-- 每个状态从 library 复制最新版本
-- 角色色板写进 CSS `:root` 变量
-
-**APNG 路线的钉法**：
-- CHARACTER_PREFIX 写好一次，所有 prompt 都用
-- 主参考图（reference image）作所有动画首/尾帧锚点
-- 不在某个状态的 prompt 里改角色描述
+**Why**: the first state is a "stress test" for the workflow — the toolchain / preset / API keys / hooking up the desktop-pet runtime. Once the first one works end to end, everything after that is production-line work.
 
 ---
 
-## ⭐ 4. 视觉直觉 > 几何正确
+## ⭐ 2. Don't lay out 21 states from the start
 
-**现象**：调参时纠结"这个角度数学上对不对"，但目测效果就是不舒服。
+**Symptom**: seeing a complete showcase with twenty-something states, a newcomer thinks "this is the standard config, I need it too."
 
-**真相**：动画是给人看的不是给代码看的。透视渐变、光影分布、节奏快慢，**视觉直觉 > 数学正确**。
+**The truth**: a complete state set usually comes from many rounds of iteration and asset reuse, not one generation pass. Newcomers shouldn't start by "laying out the whole set in one go."
 
-**典型案例**：睡眠状态里的漂浮符号，几何透视虽然正确，但视觉上不如匀速静飘舒服。
+**Correct approach**:
+- Do the minimum set for v1 (5 core states)
+- Get the workflow working end to end + hook up the runtime
+- Expand to 12 if it's interesting
+- Expand to 20+ only if you genuinely love this project
 
-**如何应用**：
-- 调参时优先目视判断
-- 设计师 / 用户的眼睛比代码的数学更准
-- 不要被"理论上应该这样"绑架
+**Anti-pattern**: starting with 21 and having all of them fizzle out, ending up with not even one usable state.
 
 ---
 
-## 5. 静帧好看 ≠ 循环好看
+## ⭐ 3. Character consistency is an engineering problem, not an aesthetic one
 
-**现象**：单帧截图觉得 OK，循环跑发现位置漂移、节奏怪。
+**Symptom**: finishing the 8th state and noticing "huh, this one doesn't quite match the 1st."
 
-**正确做法**：**浏览器循环看 30s+** 才能锁定，不靠静帧。
+**Root cause**: the character's identifying anchors weren't **pinned down** at the engineering level.
 
-详见各路线 lessons：
+**How the SVG route pins it down**:
+- Extract shared path assets (eye shapes / mouth shapes / ears) into `library/`
+- Every state copies the latest version from the library
+- The character's color palette is written into CSS `:root` variables
+
+**How the APNG route pins it down**:
+- Write CHARACTER_PREFIX once, use it in every prompt
+- The main reference image anchors the start/end frame of every animation
+- Never edit the character description within an individual state's prompt
+
+---
+
+## ⭐ 4. Visual intuition beats geometric correctness
+
+**Symptom**: getting stuck on "is this angle mathematically correct" while tuning, when the visual result just feels off regardless.
+
+**The truth**: animation is made for people to look at, not for code to check. Perspective gradients, light/shadow distribution, and rhythm/pace — **visual intuition beats mathematical correctness**.
+
+**Typical case**: floating symbols in a sleeping state — geometrically correct perspective was actually less comfortable visually than a constant-speed static float.
+
+**How to apply**:
+- Judge by eye first when tuning
+- A designer's/user's eyes are more accurate than the code's math
+- Don't get held hostage by "this is theoretically how it should be"
+
+---
+
+## 5. A good static frame ≠ a good loop
+
+**Symptom**: a single-frame screenshot looks OK, but running the loop reveals positional drift or an odd rhythm.
+
+**Correct approach**: **watch it loop in a browser for 30s+** before locking it — don't rely on a static frame.
+
+See the route-specific lessons for details:
 - SVG: `routes/svg/lessons/pitfalls.md` §2
-- APNG: `routes/apng/lessons/pitfalls.md` §尾帧锚定
+- APNG: `routes/apng/lessons/pitfalls.md` §last-frame anchoring
 
 ---
 
-## 6. 仓促感来自结构不是时长
+## 6. A rushed feel comes from structure, not duration
 
-**现象**：动画太快想加时间，加了还是仓促。
+**Symptom**: an animation feels too fast, so more time gets added — it still feels rushed.
 
-**真相**：仓促感来自"几件事挤在一段"，不是总时长。
+**The truth**: the rushed feeling comes from "several things crammed into one segment," not the total duration.
 
-**正确做法**：
-- 数动画"做了几件事"
-- 每件事是不是有独立段落
-- 收尾段落是不是塞了 2-3 件事 → 这是 80% 仓促感来源
+**Correct approach**:
+- Count how many "things" the animation does
+- Check whether each one has its own segment
+- Check whether the closing segment has 2-3 things crammed into it — that's 80% of where the rushed feeling comes from
 
-**典型案例**：完成庆祝动画从 4 段改成 7 段后，即使总时长更短，读感也更从容。
-
----
-
-## 7. 跑偏方向归档不删
-
-**现象**：试了一个方向不行，删掉清理目录。
-
-**结果**：3 周后想"绕回去看看那条路是不是真的死胡同"，再也找不到。
-
-**正确做法**：
-- 跑偏的方向归档到 `_archive/<state>/`
-- 后续磨制可能想绕回看，可能复用部分
-- 跑偏的具体细节是元教训源头
+**Typical case**: after a completion-celebration animation was changed from 4 segments to 7, it read as more composed even though the total duration got shorter.
 
 ---
 
-## 8. 改前先备份
+## 7. Off-track directions get archived, not deleted
 
-**现象**：磨着磨着发现"昨天那版本反而更好"，没备份就丢了。
+**Symptom**: a direction was tried and didn't work out, so it gets deleted to clean up the directory.
 
-**正确做法**：改任何已经基本能看的动画文件之前，先 cp 一份带 `-backup-YYYY-MM-DD` 后缀。30 秒的事，能救一整天工作。
+**Result**: 3 weeks later, wanting to "circle back and check whether that path was really a dead end" — and it's gone for good.
 
----
-
-## 9. 锁定要正式
-
-**现象**："这个差不多了"就用，没正式锁定流程。
-
-**结果**：
-- 别人改了不知道
-- 自己也不记得"这是不是最新版"
-- 接桌宠运行时时找不到该用哪个文件
-
-**正确做法**（任一路线）：
-- 备份当前版本
-- 写 spec（套了什么 preset / 自定义参数 / 关键技术点）
-- 同步进度表（⬜ → ✅）
-- 跑偏版本归档
+**Correct approach**:
+- Archive off-track directions into `_archive/<state>/`
+- Later polishing might want to circle back and look, or reuse part of it
+- The specific details of what went wrong are the source of meta-lessons
 
 ---
 
-## 10. spec 写"为什么"不只写"是什么"
+## 8. Back up before editing
 
-**现象**：spec 只写"呼吸周期 4s"。
+**Symptom**: mid-polish, realizing "yesterday's version was actually better" — and it's lost because there was no backup.
 
-**结果**：3 周后看不懂"为啥是 4s 不是 6s"，不敢改。
+**Correct approach**: before editing any animation file that's already basically presentable, `cp` a copy with a `-backup-YYYY-MM-DD` suffix first. A 30-second task that can save a whole day of work.
 
-**正确做法**：每个数值后加一句**为什么**。
+---
 
-例：
+## 9. Locking must be formal
+
+**Symptom**: "this is good enough" gets used as-is, with no formal locking process.
+
+**Result**:
+- Others don't know it changed
+- You yourself can't remember "is this the latest version"
+- When hooking up the desktop-pet runtime, no one can find which file to use
+
+**Correct approach** (either route):
+- Back up the current version
+- Write the spec (which preset was applied / custom parameters / key technical points)
+- Sync the progress table (⬜ → ✅)
+- Archive off-track versions
+
+---
+
+## 10. The spec should explain "why," not just "what"
+
+**Symptom**: the spec just says "breathing period 4s."
+
+**Result**: 3 weeks later, no one can tell "why 4s and not 6s," and no one dares to change it.
+
+**Correct approach**: add a **why** after every value.
+
+Example:
 ```
-呼吸周期 4s
-  Why: 4s 在 4-8s 缓周期范围内偏快, 适合 idle 这种"小活泼"
-       6s+ 测试感觉死寂. 套 apple-precise preset 节奏档位.
+Breathing period 4s
+  Why: 4s is on the faster end of the 4-8s slow-cycle range, suited to
+       idle's "small liveliness." 6s+ tested as feeling lifeless.
+       Follows the apple-precise preset's pacing tier.
 ```
 
 ---
 
-## 11. 角色宪法 AI 内部建模, 不让用户填
+## 11. The AI models the character's "constitution" internally — don't make the user fill it in
 
-**现象**：让用户填一个"角色宪法表单"（守恒法则 / 变化语法 / 激进度预算 ...），用户填到一半放弃。
+**Symptom**: asking the user to fill in a "character constitution form" (conservation rules / a grammar of change / an aggressiveness budget...) — the user gives up halfway through.
 
-**真相**：用户只想说"我要个橘猫，苹果精致风"，不想填表。
+**The truth**: the user just wants to say "I want an orange cat, apple-precise style," not fill out a form.
 
-**正确做法**：
-- 用户只给：**角色描述 + 风格关键词**
-- AI 第一次画完后，自己提取"这个角色的识别锚点"并固化为复用 asset
-- 用户感知不到"角色宪法"这个概念，但 AI 内部维护
-
----
-
-## 12. 视觉品味只能由人拍板
-
-**现象**：希望 AI 自动判断"这个动画好不好看"。
-
-**真相**：好不好看是审美决策，**只能人拍板**。AI 能提供选项，能列对比，但不能替你决定。
-
-**正确做法**：
-- AI 提供 3 个方向 / 3 个参数选项
-- 人选择
-- 人选择后 AI 高质量执行
-
-**反面**：让 AI 全程自动 = 出来的东西"无感"，不是任何人的桌宠。
+**Correct approach**:
+- The user only provides: **a character description + style keywords**
+- After the AI's first pass, it extracts this character's identifying anchors itself and bakes them into a reusable asset
+- The user never perceives the concept of a "character constitution," but the AI maintains it internally
 
 ---
 
-## 13. 路线选择是工作假设不是宪法
+## 12. Visual taste can only be decided by a human
 
-**现象**：开工选了 SVG 路线，做到一半觉得"sleeping 这个状态明显 APNG 路线更合适"。
+**Symptom**: hoping the AI can automatically judge "does this animation look good."
 
-**真相**：路线选择是工作假设，可以变。
+**The truth**: whether something looks good is an aesthetic decision, and **only a human can make the call**. The AI can provide options and lay out comparisons, but it can't decide for you.
 
-**正确做法**：
-- 单一路线优先（管理简单）
-- 但允许混合（部分 SVG 部分 APNG），前提是你的运行时支持
-- 路线变更要重写对应状态，但不要为"沉没成本"硬留
+**Correct approach**:
+- The AI offers 3 directions / 3 parameter options
+- The human picks
+- Once the human picks, the AI executes it at high quality
 
----
-
-## 14. 简单 ≠ 去掉活物感
-
-**现象**：想做"很简单的状态"，结果做出来像静态贴图。
-
-**真相**：任何活物都至少有 **呼吸 + 偶尔眨眼** 两层。少了就死了。
-
-**正确做法**：
-- 任何状态底层有这两层
-- "简单"指不加额外装饰，不是去掉基础生命感
-- 静态贴图永远不能当桌宠状态
+**Anti-pattern**: letting the AI run fully automatically = the result feels "generic," not anyone's specific pet.
 
 ---
 
-## 15. 视觉决策 > 工程决策
+## 13. Route choice is a working hypothesis, not a constitution
 
-**现象**：纠结"这个用 path 还是 polygon"、"用 transform 还是 SMIL"。
+**Symptom**: starting on the SVG route, and halfway through realizing "the sleeping state clearly fits the APNG route better."
 
-**真相**：用户看不到代码，只看效果。**先确定要的视觉效果，再倒推用什么技术**。
+**The truth**: route choice is a working hypothesis, and it can change.
 
-**正确做法**：
-- 先在草稿纸 / Figma 画出最终想要的样子
-- 再选技术实现
-- 不要为"用了什么 fancy 技术"而做某种实现
-
----
-
-## 16. 母版、调参页、交付页必须分清
-
-**现象**：一个 tuner 页面调着调着变成了"最新版"，showcase 又复制了另一个文件，运行时实际加载第三个文件。
-
-**结果**：没人知道哪份是 source of truth，修 bug 时越修越乱。
-
-**正确做法**：
-- 母版只管分层资产和识别锚点
-- tuner 只管调参数和试方向
-- canonical state 是运行时应加载的干净文件
-- showcase copy 只证明当前交付长什么样
-
-锁定后要明确记录：现在的真相源是哪一个文件。
+**Correct approach**:
+- Prefer a single route (simpler to manage)
+- But mixing is allowed (some SVG, some APNG), provided your runtime supports it
+- Changing routes means rewriting the corresponding state, but don't stick with a route just for the sunk cost
 
 ---
 
-## 17. 对外判断先看真实交付
+## 14. Simple ≠ stripped of the sense of being alive
 
-**现象**：用户或客户问"是不是没做 X"，AI 靠记忆回答"做了/没做"。
+**Symptom**: trying to make "a very simple state" and ending up with something that looks like a static sticker.
 
-**结果**：容易把已交付内容说成没交付，也容易把新增需求说成 bug。
+**The truth**: anything alive has at least two layers — **breathing + occasional blinking**. Missing either one, and it reads as dead.
 
-**正确做法**：
-- 先打开真实 demo / runtime / public asset
-- 查页面是否引用正确文件
-- 查状态列表和实际可见行为
-- 再判断这是 bug、遗漏、缓存问题，还是新增 scope
-
-对外沟通不要靠印象，要靠当前可见结果。
+**Correct approach**:
+- Every state has these two layers underneath it
+- "Simple" means no extra decoration, not stripping out the basic sense of life
+- A static sticker can never serve as a desktop pet state
 
 ---
 
-## 18. AI 参考图是 storyboard，不是交付母版
+## 15. Visual decisions outrank engineering decisions
 
-**现象**：AI 生出一张很漂亮的图，就整张 png2svg 后直接开始做动画。
+**Symptom**: agonizing over "should this be a path or a polygon," "transform or SMIL."
 
-**结果**：path 爆炸、图层不可控、锚点不可复用，后面每个状态都难维护。
+**The truth**: the user never sees the code, only the result. **Decide the visual effect you want first, then work backwards to the technique.**
 
-**正确做法**：
-- AI 图可用于确定角色气质、道具、表情和动作故事板
-- png2svg 可用于提取粗轮廓或局部色块
-- 交付级 SVG 仍要整理成稳定图层、可读路径、命名锚点和可复用部件
-
-越想做多状态，越不能把一次性生成图当长期母版。
+**Correct approach**:
+- Sketch out the final look you want on paper / in Figma first
+- Then pick the technical implementation
+- Don't build something a certain way just because it uses some "fancy technique"
 
 ---
 
-## 19. 私有项目细节不要写进通用 skill
+## 16. Keep the master, the tuning page, and the delivery page clearly separate
 
-**现象**：一个项目踩坑后，把客户名、域名、内部变量、具体坐标和一次性 hack 全写进通用文档。
+**Symptom**: a tuner page gradually becomes "the latest version" through repeated tweaking, the showcase copies yet another file, and the runtime actually loads a third file.
 
-**结果**：下个角色照抄时被旧项目污染。
+**Result**: no one knows which one is the source of truth, and bug fixes get messier the more they're touched.
 
-**正确做法**：
-- 写可迁移的判断原则
-- 写文件角色、验证动作、失败症状和决策边界
-- 不写客户名、私有 URL、具体角色坐标、内部 host 变量
-- 特例只放 case study，并标明不是默认做法
+**Correct approach**:
+- The master only manages layered assets and identifying anchors
+- The tuner only manages tuning parameters and trying directions
+- The canonical state is the clean file the runtime should load
+- The showcase copy only proves what the current delivery looks like
 
----
-
-## 反面：什么不是元教训
-
-不要把这些当元教训：
-
-- ❌ "某个案例用了 morph 70-90%" → 这是 SVG 路线 + apple-precise preset 的具体策略，不是通用元教训
-- ❌ "某个案例用 #00B140 绿幕" → 这是 APNG 路线的具体配色
-- ❌ "stages 划 5 段就够" → 这是 happy burst 的具体策略
-
-**通用元教训**应该跨路线、跨角色、跨项目都成立。
+Once locked, explicitly record which file is currently the source of truth.
 
 ---
 
-## 用法
+## 17. Check the real delivered result before making an external judgment call
 
-新对话进来 pet-forge 第一件事：
+**Symptom**: a user or client asks "did you skip X," and the AI answers "did it / didn't do it" from memory.
 
-1. 读 `CLAUDE.md`（项目入口）
-2. 读本文件 `shared/lessons.md`（通用心法）
-3. 看用户走哪条路线，进 `routes/svg/lessons/` 或 `routes/apng/lessons/`（路线专属经验）
+**Result**: easy to describe something already delivered as not delivered, and just as easy to describe a new requirement as a bug.
 
-通用 + 路线专属 = 该路线该角色的全部经验积累。
+**Correct approach**:
+- Open the real demo / runtime / public asset first
+- Check whether the page references the correct file
+- Check the state list against the actually visible behavior
+- Only then judge whether it's a bug, an omission, a caching issue, or new scope
+
+Don't communicate externally from memory — go by the currently visible result.
+
+---
+
+## 18. An AI reference image is a storyboard, not the delivery master
+
+**Symptom**: the AI generates a gorgeous image, and it's run through png2svg wholesale and animation starts right away.
+
+**Result**: path explosion, uncontrollable layers, non-reusable anchors — every subsequent state becomes hard to maintain.
+
+**Correct approach**:
+- An AI-generated image can be used to nail down the character's mood, props, expressions, and an action storyboard
+- png2svg can be used to extract a rough silhouette or local color blocks
+- A delivery-grade SVG still needs to be organized into stable layers, readable paths, named anchors, and reusable parts
+
+The more states you plan to build, the less you can afford to treat a one-shot generated image as a long-term master.
+
+---
+
+## 19. Don't write private project details into the general-purpose skill
+
+**Symptom**: after hitting a snag on one project, writing the client's name, domain, internal variables, specific coordinates, and one-off hacks all into the general-purpose docs.
+
+**Result**: the next character copies it and gets contaminated by the old project.
+
+**Correct approach**:
+- Write down transferable judgment principles
+- Write down file roles, verification actions, failure symptoms, and decision boundaries
+- Don't write client names, private URLs, specific character coordinates, or internal host variables
+- Keep special cases in a case study only, and label them as not the default approach
+
+---
+
+## Anti-pattern: what is NOT a meta-lesson
+
+Don't treat these as meta-lessons:
+
+- ❌ "One project used a 70-90% morph" → this is a specific strategy for the SVG route + the apple-precise preset, not a general meta-lesson
+- ❌ "One project used a #00B140 green screen" → this is a specific APNG-route color choice
+- ❌ "5 segments was enough for the stages" → this is a specific strategy for happy-burst
+
+A **general meta-lesson** should hold across routes, across characters, and across projects.
+
+---
+
+## How to use this
+
+The first thing to do when a new conversation enters pet-forge:
+
+1. Read `CLAUDE.md` (the project entry point)
+2. Read this file, `shared/lessons.md` (general mindset)
+3. See which route the user is on, and go into `routes/svg/lessons/` or `routes/apng/lessons/` (route-specific experience)
+
+General + route-specific = the full accumulated experience for that route and that character.

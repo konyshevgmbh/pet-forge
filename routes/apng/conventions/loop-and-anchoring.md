@@ -1,141 +1,141 @@
-# 首尾帧关系与锚定策略
+# First/Last-Frame Relationships and Anchoring Strategy
 
-> APNG 路线最容易翻车的事：循环不无缝、过渡动画姿态对不上。
-> 根本原因都是**没搞清楚这个状态的首尾帧关系**。
-> 本文档来自 APNG 桌宠状态实战分类。
+> The most common way the APNG route goes wrong: loops that aren't seamless, or transition animations whose poses don't line up.
+> The root cause is always **not being clear on this state's first/last-frame relationship**.
+> This document distills lessons from classifying real APNG desktop pet states.
 
 ---
 
-## 3 类首尾帧关系（一图读完）
+## 3 Types of First/Last-Frame Relationships (at a glance)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  A. 循环动画 (loop: true)                                    │
-│     首帧 ═══════════════════════════════════════════════ 尾帧 │
-│              整个视频是闭环, 首=尾                           │
-│     例: idle-dozing / typing / sleeping / working-* / mini-* │
-│     gen-video: <动画名> --image X --last-frame X (同一张图) │
+│  A. Looping animation (loop: true)                           │
+│     First frame ══════════════════════════════════ Last frame │
+│              The whole video is a closed loop; first = last  │
+│     e.g.: idle-dozing / typing / sleeping / working-* / mini-* │
+│     gen-video: <animation name> --image X --last-frame X (same image) │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
-│  B. 一次性·回归型 (loop: false, anchor: same)               │
-│     首帧 ─────[做完动作]─────[回到中性]──────────────── 尾帧 │
-│              首=尾, 但中间经历了一段动作                     │
-│     例: happy / notification / react-poke / idle-yawn / ...  │
-│     gen-video: <动画名> --image X --last-frame X (同一张图) │
+│  B. One-shot · return type (loop: false, anchor: same)       │
+│     First frame ─────[performs the action]─────[back to neutral]──── Last frame │
+│              First = last, but there's motion in between     │
+│     e.g.: happy / notification / react-poke / idle-yawn / ...  │
+│     gen-video: <animation name> --image X --last-frame X (same image) │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
-│  C. 一次性·过渡型 (loop: false, anchor: different)          │
-│     首帧 X ───[过渡动作]──────────────────────────── 尾帧 Y │
-│              首≠尾, 是状态间的"桥梁"                         │
-│     例: wake (sleep→idle) / collapse-sleep (idle→sleep) /   │
+│  C. One-shot · transition type (loop: false, anchor: different) │
+│     First frame X ───[transition motion]────────────────── Last frame Y │
+│              First ≠ last; this is a "bridge" between states │
+│     e.g.: wake (sleep→idle) / collapse-sleep (idle→sleep) /   │
 │         mini-enter (offscreen→mini-idle)                     │
-│     gen-video: <动画名> --image X --last-frame Y (不同两图) │
+│     gen-video: <animation name> --image X --last-frame Y (two different images) │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 决策树：你的状态属于哪一类？
+## Decision Tree: Which Type Is Your State?
 
 ```
-你要做的状态是什么？
+What state are you building?
    │
-   ├─ 一直循环播放? (idle / typing / sleeping ...)
+   ├─ Plays continuously in a loop? (idle / typing / sleeping ...)
    │     │
-   │     └─ A 类 (loop:true, 首=尾)
+   │     └─ Type A (loop:true, first = last)
    │
-   ├─ 触发一次?
+   ├─ Triggers once?
    │     │
-   │     ├─ 结束姿态是否等于开始姿态?
+   │     ├─ Does the ending pose equal the starting pose?
    │     │     │
-   │     │     └─ B 类 (loop:false, 首=尾)
-   │     │        例: happy / notification / react-poke / idle-yawn
+   │     │     └─ Type B (loop:false, first = last)
+   │     │        e.g.: happy / notification / react-poke / idle-yawn
    │     │
-   │     └─ 结束姿态是否换成另一个状态姿态?
+   │     └─ Does the ending pose become a different state's pose?
    │           │
-   │           └─ C 类 (loop:false, 首≠尾, 是过渡)
-   │              例: wake (sleep→idle) / collapse-sleep (idle→sleep)
+   │           └─ Type C (loop:false, first ≠ last, a transition)
+   │              e.g.: wake (sleep→idle) / collapse-sleep (idle→sleep)
    │
-   └─ 它本质是状态间的过渡桥梁?
+   └─ Is it fundamentally a transition bridge between states?
          │
-         └─ C 类 (loop:false, 首≠尾)
+         └─ Type C (loop:false, first ≠ last)
 ```
 
-**注意**：B 类和 C 类的差别看**首尾姿态是否相同**，不是看"最后状态名是不是 idle"：
-- B 类 = 结尾回到开始姿态（例：happy 从 idle 起，庆祝完回 idle）
-- C 类 = 结尾去另一个姿态（例：wake 从 sleep 起，结束到 idle；虽然目的地是 idle，但首≠尾）
+**Note**: the difference between Type B and Type C is **whether the first and last poses match**, not "whether the ending state's name is idle":
+- Type B = ends back at the starting pose (e.g., happy starts from idle, celebrates, and returns to idle)
+- Type C = ends at a different pose (e.g., wake starts from sleep and ends at idle; even though the destination is idle, first ≠ last)
 
 ---
 
-## 完整状态库的归类（25 个交付状态）
+## Classification of the Full State Library (25 delivery states)
 
-### A 类 · 循环（16 个）
+### Type A · Looping (16 states)
 
-| 状态 | duration | refKey | 备注 |
+| State | duration | refKey | Notes |
 |---|---|---|---|
-| `idle-dozing` | 5s | main | 极简微动只呼吸 |
-| `idle-living` | 5s | main | 小动作循环（舔爪/整理） |
-| `thinking` | 3s | main | 歪头+问号 |
-| `working-typing` | 3s | main | 左右手交替 |
-| `working-building` | 5s | building | 拿工具拧螺丝 |
-| `working-juggling` | 5s | juggling | 玩抛接物 |
-| `working-conducting` | 5s | main | 尾巴/触角作指挥棒 |
-| `working-sweeping` | 5s | sweeping | 左右擦动 |
-| `working-carrying` | 5s | carrying | 叼物左右走 |
-| `react-drag` | 3s | react-drag | 悬浮兴奋飞 |
-| `error` | 5s | error | XX眼侧躺呼吸 |
-| `sleeping` | 5s | sleep-final | 睡觉呼吸+Zzz |
-| `mini-idle` | 5s | mini | mini 模式呼吸 |
-| `mini-alert` | 3s | mini | mini+感叹号 |
-| `mini-happy` | 3s | mini | mini+花花星星 |
-| `mini-sleep` | 5s | mini | mini 闭眼睡 |
+| `idle-dozing` | 5s | main | Minimal micro-motion, breathing only |
+| `idle-living` | 5s | main | Small motion loop (paw licking / grooming) |
+| `thinking` | 3s | main | Head tilt + question mark |
+| `working-typing` | 3s | main | Alternating hands |
+| `working-building` | 5s | building | Holding a tool, screwing |
+| `working-juggling` | 5s | juggling | Playing catch |
+| `working-conducting` | 5s | main | Tail/antennae as a conducting baton |
+| `working-sweeping` | 5s | sweeping | Sweeping back and forth |
+| `working-carrying` | 5s | carrying | Carrying something while walking |
+| `react-drag` | 3s | react-drag | Floating, excited flight |
+| `error` | 5s | error | Lying on side with X eyes, breathing |
+| `sleeping` | 5s | sleep-final | Sleeping breath + Zzz |
+| `mini-idle` | 5s | mini | mini mode breathing |
+| `mini-alert` | 3s | mini | mini + exclamation mark |
+| `mini-happy` | 3s | mini | mini + sparkle/star effects |
+| `mini-sleep` | 5s | mini | mini eyes closed, sleeping |
 
-### B 类 · 一次性·回归型（6 个）
+### Type B · One-shot · Return Type (6 states)
 
-| 状态 | duration | refKey | 备注 |
+| State | duration | refKey | Notes |
 |---|---|---|---|
-| `happy` | 4s | main | 庆祝完回 idle |
-| `notification` | 2.5s | main | 警觉完回 idle |
-| `react-poke` | 2.5s | main | 反应完回 idle |
-| `idle-yawn` | 3s | main | 打完哈欠回 idle |
-| `idle-look` | 6.5s | main | 张望完回正 |
-| `mini-peek` | 2s | mini | mini 探头后回 mini-idle |
+| `happy` | 4s | main | Returns to idle after celebrating |
+| `notification` | 2.5s | main | Returns to idle after alertness |
+| `react-poke` | 2.5s | main | Returns to idle after reacting |
+| `idle-yawn` | 3s | main | Returns to idle after yawning |
+| `idle-look` | 6.5s | main | Returns to center after looking around |
+| `mini-peek` | 2s | mini | Returns to mini-idle after mini peek |
 
-### C 类 · 一次性·过渡型（3 个）
+### Type C · One-shot · Transition Type (3 states)
 
-| 状态 | duration | refKey (首) | lastKey (尾) | 备注 |
+| State | duration | refKey (first) | lastKey (last) | Notes |
 |---|---|---|---|---|
-| `collapse-sleep` | 0.8s | main | sleep-final | idle → sleeping 过渡 |
-| `wake` | 1.5s | sleep-final | main | sleeping → idle 过渡 |
-| `mini-enter` | 3s | offscreen-left | mini | 场外 → mini-idle 过渡 |
+| `collapse-sleep` | 0.8s | main | sleep-final | idle → sleeping transition |
+| `wake` | 1.5s | sleep-final | main | sleeping → idle transition |
+| `mini-enter` | 3s | offscreen-left | mini | offscreen → mini-idle transition |
 
-### 常见衔接链
+### Common Chains
 
 ```
-正常睡眠链:
+Normal sleep chain:
   idle (A)
-   → idle-yawn (B, 装饰)
-   → idle-dozing (A, 等待)
-   → collapse-sleep (C, 过渡到 sleeping)   ← 关键过渡
-   → sleeping (A, 循环)
-   → wake (C, 过渡回 idle)                  ← 关键过渡
+   → idle-yawn (B, decorative)
+   → idle-dozing (A, waiting)
+   → collapse-sleep (C, transition to sleeping)   ← key transition
+   → sleeping (A, looping)
+   → wake (C, transition back to idle)             ← key transition
    → idle (A)
 
-mini 模式入场:
+mini mode entry:
   idle (A)
-   → mini-enter (C, 过渡到 mini-idle)       ← 关键过渡
-   → mini-idle (A, 循环)
+   → mini-enter (C, transition to mini-idle)       ← key transition
+   → mini-idle (A, looping)
 ```
 
-**关键认知**：C 类（过渡）虽然只有 3 个，但**它们是状态机的"桥梁"**——没有它们，状态切换会"咔嚓"一下姿态突变。
+**Key insight**: Type C (transitions) only has 3 states, but **they are the "bridges" of the state machine** — without them, state switches "snap" into an abrupt pose change.
 
 ---
 
-## gen-video.js 命令模板（按 anchor 类型）
+## gen-video.js Command Templates (by anchor type)
 
-### A / B 类（首=尾）
+### Types A / B (first = last)
 
 ```powershell
 node gen-video.js \
@@ -145,12 +145,12 @@ node gen-video.js \
   --api doubao
 ```
 
-`--last-frame` 跟 `--image` 用**同一张图**。
+`--last-frame` uses **the same image** as `--image`.
 
-### C 类（首≠尾）
+### Type C (first ≠ last)
 
 ```powershell
-# 例：collapse-sleep (idle 姿态 → sleeping 姿态)
+# Example: collapse-sleep (idle pose → sleeping pose)
 node gen-video.js \
   collapse-sleep \
   --image reference/main-ref.png \
@@ -158,11 +158,11 @@ node gen-video.js \
   --api doubao
 ```
 
-`--last-frame` 用**不同的尾帧参考图**。
+`--last-frame` uses a **different** last-frame reference image.
 
-### 自动生成命令
+### Auto-Generating the Command
 
-`prompts/template.js` 提供了 `buildGenVideoCommand(key, refImagePaths)` 自动选 anchor 类型：
+`prompts/template.js` provides `buildGenVideoCommand(key, refImagePaths)`, which automatically picks the anchor type:
 
 ```javascript
 import { buildGenVideoCommand } from './prompts/template.js';
@@ -174,99 +174,99 @@ const refImages = {
 };
 
 console.log(buildGenVideoCommand('collapse-sleep', refImages));
-// → 输出完整 gen-video.js 命令, 自动用 --last-frame sleep-final
+// → outputs the full gen-video.js command, automatically using --last-frame sleep-final
 ```
 
 ---
 
-## prompt 写法差异
+## Prompt Wording Differences
 
-### A 类（循环）的 prompt 必须强调
+### Type A (loop) prompts must emphasize
 
 ```
 ... Seamless loop animation — the last frame connects perfectly back to the first frame.
 The body stays in place, only X moves.
 ```
 
-### B 类（一次性·回归型）的 prompt 必须强调
+### Type B (one-shot · return type) prompts must emphasize
 
 ```
 ... Then it settles back to the EXACT original pose / starting pose.
 The ending pose must match the starting pose EXACTLY.
 ```
 
-注意：B 类的**关键词不是 "Seamless loop"**，是 "settles back to original" / "returns to exact starting pose"。
+Note: Type B's **key phrase is not "Seamless loop"** — it's "settles back to original" / "returns to exact starting pose."
 
-### C 类（一次性·过渡型）的 prompt 必须强调
+### Type C (one-shot · transition type) prompts must emphasize
 
 ```
 ... End pose is the {sleeping ball / sitting upright / lying down}.
 The end pose matches the {target state} pose EXACTLY.
 ```
 
-C 类**绝对不写 "Seamless loop" 也不写 "returns to starting"**——它就是要去新姿态。
+Type C **must never say "Seamless loop" or "returns to starting"** — the whole point is that it goes to a new pose.
 
 ---
 
-## 翻车案例
+## Failure Case Studies
 
-### 案例 1：循环动画（A 类）忘了 --last-frame，结果首尾对不齐
+### Case 1: A looping animation (Type A) forgot --last-frame, so first and last frames didn't line up
 
-**症状**：working-typing 跑完 APNG 循环时"咔嚓"一下，前爪位置突变。
+**Symptom**: working-typing "snaps" when the APNG loop restarts, with the front paws jumping position.
 
-**原因**：只传了 `--image` 没传 `--last-frame`，AI 视频结尾自然结束在某个奇怪位置。
+**Cause**: only `--image` was passed, not `--last-frame`, so the AI video ends naturally at some arbitrary pose.
 
-**修复**：补 `--last-frame <同 --image>`。
+**Fix**: add `--last-frame <same as --image>`.
 
-### 案例 2：B 类（回归型）prompt 写了 "Seamless loop"，结果 AI 把动作做成循环
+### Case 2: A Type B (return type) prompt said "Seamless loop," so the AI turned the motion into a loop
 
-**症状**：happy 庆祝动作循环了 4 次，看起来像 happy GIF。
+**Symptom**: the happy celebration motion looped 4 times, looking like a happy GIF.
 
-**原因**：prompt 说 "Seamless loop"，AI 解读成"做循环"而不是"做一次"。
+**Cause**: the prompt said "Seamless loop," and the AI interpreted it as "make this loop" instead of "do this once."
 
-**修复**：B 类 prompt 改用 "Returns to exact starting pose at the end"，**不写 loop**。
+**Fix**: Type B prompts should say "Returns to exact starting pose at the end" instead, **never mention loop**.
 
-### 案例 3：C 类（过渡型）忘了改 lastKey，用了同一张参考图
+### Case 3: A Type C (transition type) forgot to change lastKey and reused the same reference image
 
-**症状**：collapse-sleep 跑完，角色坐下去...又站起来回 idle 姿态。AI 努力让首尾帧一致结果违反了"倒下入睡"的语义。
+**Symptom**: after collapse-sleep finishes, the character sits down... then stands back up into the idle pose. The AI worked hard to make the first and last frames match, which violated the "falling asleep" semantics.
 
-**原因**：`--last-frame` 用了 idle 参考图（跟 `--image` 同），AI 锚定要"结束在坐姿"。
+**Cause**: `--last-frame` used the idle reference image (same as `--image`), so the AI anchored on "end in the sitting pose."
 
-**修复**：C 类必须用**不同的尾帧参考图**（sleep-final）。
+**Fix**: Type C must use a **different** last-frame reference image (sleep-final).
 
-### 案例 4：A 类不要描述"做几个动作循环"，AI 会真的做几次
+### Case 4: For Type A, don't describe "doing several motion cycles" — the AI will actually do them
 
-**症状**：working-juggling 描述"bats the ball, falls back, hugs it, rolls back up..."，AI 把这一整套做了 2 次但首尾还是对不齐。
+**Symptom**: working-juggling's description said "bats the ball, falls back, hugs it, rolls back up..." and the AI performed the whole sequence twice, and the first/last frames still didn't line up.
 
-**原因**：prompt 描述了**多步动作序列**，AI 努力把整个序列塞进 5s。
+**Cause**: the prompt described a **multi-step motion sequence**, and the AI tried to cram the whole sequence into 5s.
 
-**修复**：A 类的复杂动作 prompt 末尾**必须**强调 "...and returns to the EXACT starting pose"——告诉 AI 这一整套是循环的"一个周期"。
+**Fix**: complex Type A motion prompts **must** end with "...and returns to the EXACT starting pose" — telling the AI that this whole sequence is "one cycle" of the loop.
 
 ---
 
-## SVG 路线对应（同样的 3 类）
+## The SVG Route Equivalent (same 3 types)
 
-虽然 SVG 路线不用 `--last-frame`，但 CSS keyframes 同样有这 3 类：
+The SVG route doesn't use `--last-frame`, but CSS keyframes have the same 3 types:
 
-### A 类 → CSS infinite loop
+### Type A → CSS infinite loop
 
 ```css
 @keyframes typing {
-  0%, 100% { /* 同一姿态, 闭环 */ }
-  50%      { /* 中间姿态 */ }
+  0%, 100% { /* same pose, closed loop */ }
+  50%      { /* mid-pose */ }
 }
 .pet { animation: typing 3s infinite; }
 ```
 
-`0%` 和 `100%` 必须**完全一致**（CSS 不会自动插值首尾，但下一轮循环开始时跳到 0%，所以 100% 和 0% 不一致 = 跳帧）。
+`0%` and `100%` must be **exactly identical** (CSS doesn't auto-interpolate between last and first frame — the next loop iteration jumps straight to 0%, so 100% ≠ 0% means a visible frame jump).
 
-### B 类 → CSS run once + reset
+### Type B → CSS run once + reset
 
 ```css
 @keyframes happy {
-  0%   { /* 起始姿态 */ }
-  50%  { /* 高潮 */ }
-  100% { /* 回到起始姿态 (= 0%) */ }
+  0%   { /* starting pose */ }
+  50%  { /* peak */ }
+  100% { /* back to starting pose (= 0%) */ }
 }
 .pet.happy {
   animation: happy 4s ease-out;
@@ -274,32 +274,32 @@ C 类**绝对不写 "Seamless loop" 也不写 "returns to starting"**——它�
 }
 ```
 
-`0%` 和 `100%` 也相同，但只播一次。
+`0%` and `100%` are also identical, but it only plays once.
 
-### C 类 → CSS forwards (停在终态)
+### Type C → CSS forwards (stops at the end state)
 
 ```css
 @keyframes collapse-sleep {
-  0%   { /* idle 姿态 */ }
-  100% { /* sleeping 姿态 (≠ 0%) */ }
+  0%   { /* idle pose */ }
+  100% { /* sleeping pose (≠ 0%) */ }
 }
 .pet.collapse-sleep {
   animation: collapse-sleep 0.8s ease-in forwards;
   animation-iteration-count: 1;
-  animation-fill-mode: forwards;  /* 关键: 停在 100% */
+  animation-fill-mode: forwards;  /* key: stays at 100% */
 }
 ```
 
-`forwards` 让 CSS 在动画结束后保持在 100% 姿态（去新状态），不回到 0%。
+`forwards` makes CSS hold the 100% pose (the new state) after the animation ends, instead of snapping back to 0%.
 
 ---
 
-## 最容易翻车的 3 个状态（务必先做这 3 个测试工作流）
+## The 3 States Most Likely to Go Wrong (be sure to test these 3 first)
 
-| 状态 | 类 | 翻车原因 |
+| State | Type | Why it fails |
 |---|---|---|
-| `working-typing` | A | 不写 "seamless loop" + 不传 --last-frame |
-| `happy` | B | 写了 "seamless loop" 导致 AI 循环 / 不写 "returns to exact pose" |
-| `collapse-sleep` | C | 没用不同的尾帧参考图 / prompt 说 "loop" |
+| `working-typing` | A | Not writing "seamless loop" + not passing --last-frame |
+| `happy` | B | Writing "seamless loop" causes the AI to loop it / not writing "returns to exact pose" |
+| `collapse-sleep` | C | Not using a different last-frame reference image / prompt says "loop" |
 
-新角色第一次跑通这 3 个 = APNG 工作流摸通了，剩下的 22 个是流水线作业。
+Once you've gotten these 3 working for a new character, you've got the APNG workflow figured out — the remaining 22 are production-line work.

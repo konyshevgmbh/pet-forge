@@ -1,8 +1,8 @@
 {
-  "_comment": "vtracer 调参预设。png2svg.py 已接入 --preset <name> 和 --list-presets；也可以用 --n-colors / --scale 覆盖单次运行参数。",
+  "_comment": "vtracer tuning presets. png2svg.py already wires up --preset <name> and --list-presets; --n-colors / --scale can also override a single run's parameters.",
 
   "apple-precise": {
-    "_description": "扁平卡通 / 圆角凸起 / 软橡胶质感角色（云朵、软糖、精致圆润风）",
+    "_description": "Flat cartoon / rounded bumps / soft-rubber-texture character (clouds, marshmallows, refined-rounded style)",
     "n_colors": 8,
     "scale": "auto",
     "vtracer": {
@@ -21,7 +21,7 @@
   },
 
   "pixel-art": {
-    "_description": "整像素角色（FC / GBA 风）。mode polygon 保直角，filter_speckle 0 保留所有像素",
+    "_description": "Full-pixel character (FC / GBA style). mode polygon preserves right angles, filter_speckle 0 keeps every pixel",
     "n_colors": 16,
     "scale": 1,
     "vtracer": {
@@ -40,7 +40,7 @@
   },
 
   "high-detail": {
-    "_description": "复杂插画 / 多色 / 渐变较多。慎用 SVG 路线本身就不擅长这种，建议看 APNG 路线",
+    "_description": "Complex illustration / many colors / lots of gradients. Use with caution — the SVG route itself isn't good at this, consider the APNG route",
     "n_colors": 24,
     "scale": "auto",
     "vtracer": {

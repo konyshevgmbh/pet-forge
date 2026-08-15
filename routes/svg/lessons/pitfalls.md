@@ -1,327 +1,327 @@
-# SVG 路线经验教训
+# SVG route lessons learned
 
-> 这些坑你不会自己再踩一遍。从 SVG 桌宠实际磨制中抽出的元规则，跨状态、跨角色都适用。
-
----
-
-## ⭐ 核心元教训（按重要性排序）
-
-### 0. 会变形的部件先 rig-first
-
-**现象**：手、脚、尾巴、脸部边缘这类部件直接拖 path 控制点，静帧勉强能看，动起来出现尖角、纸片坍塌、关节鼓包或端点漂移。
-
-**正确做法**：先按 `routes/svg/conventions/rig-first.md` 建语义锚点和变形 rig，再生成中间帧。0% 要等于母版，100% 要等于确认终点，中间帧才有资格调节奏。
-
-**反面**：用整体平移/旋转假装做 deform，或者把坏手臂藏到身体后面，后续状态一定返工。
-
-### 1. morph 70-90% 比 100% 更精致
-
-**现象**：球化、变形、压扁这类动作，t=100%（完全变成目标形态）总是不如 t=70-90%（保留点原形）好看。
-
-**为什么**：
-- 100% 看起来像"换了个角色"，破坏识别度
-- 70-90% 是"准形态"——看得出在变，但还是这个角色
-- 心理学上"大致还是 ta + 在变"比"完全变了"更让人舒服
-
-**如何应用**：任何 morph / scale / 压扁动作先试 70-90%，**不要默认 100%**。
+> Pitfalls you won't have to fall into yourself. Meta-rules distilled from actually polishing SVG desktop pets, applicable across states and characters.
 
 ---
 
-### 2. 静帧好看 ≠ 循环好看
+## ⭐ Core meta-lessons (ranked by importance)
 
-**现象**：单帧截图觉得 OK 的动画，跑起来发现位置漂移、节奏不对、衔接突兀。
+### 0. Parts that deform need rig-first treatment
 
-**典型案例**：睡眠状态的附属部件静帧 OK，循环时呼吸把它推得"游来游去"，必须重新调 pivot。
+**Symptom**: parts like hands, feet, tail, or face edges get their path control points dragged directly; the static frame is barely OK, but once it moves you get sharp corners, paper-thin collapse, bulging joints, or endpoint drift.
 
-**如何应用**：
-- **必须在浏览器循环看 30s+**才能锁定
-- 关注循环衔接处（首尾帧位置/缩放是否对得上）
-- 关注关键元素在循环中的"绝对位置"是否漂移
-- 不要靠静帧截图做 review
+**Correct approach**: build semantic anchors and a deformation rig first, following `routes/svg/conventions/rig-first.md`, then generate in-between frames. 0% must equal the master, 100% must equal the confirmed endpoint — only then does the in-between frame earn the right to have its rhythm tuned.
 
----
+**Anti-pattern**: faking a deform with a whole-part translate/rotate, or hiding a broken arm behind the body — later states will inevitably need rework.
 
-### 3. 仓促感来自结构不是时长
+### 1. A 70-90% morph reads better than 100%
 
-**现象**：觉得动画"太快"想加时间，加了还是觉得仓促。
+**Symptom**: for actions like ball-forming, morphing, or squashing, t=100% (fully turned into the target shape) always looks worse than t=70-90% (keeping a bit of the original shape).
 
-**典型案例**：happy burst V1 4 段 2.2s 觉得仓促，V4 7 段同 2.0s 反而完美。
+**Why**:
+- 100% looks like "it turned into a different character," which hurts recognizability
+- 70-90% is a "near-shape" — you can tell it's changing, but it's still this character
+- Psychologically, "still roughly them + changing" is more comfortable than "completely changed"
 
-**为什么**：仓促感来自"几件事挤在收尾"，不是总时长不够。把 1 个段落拆成 2-3 个段落后，每段呼吸感出来了，反而总时长还能压缩。
-
-**如何应用**：
-- **别先调时长**，先看结构（段落划分）
-- 数一下动画"做了几件事"，每件事是不是有独立段落
-- 收尾段落是不是塞了 2-3 件事——这是 80% 的仓促感来源
+**How to apply**: for any morph / scale / squash action, try 70-90% first — **don't default to 100%**.
 
 ---
 
-### 4. 视觉直觉 > 几何正确
+### 2. A good static frame ≠ a good loop
 
-**现象**：数学正确的动画看起来不对，目测调出来的反而对。
+**Symptom**: an animation that looked OK in a single-frame screenshot turns out, once running, to have positional drift, an off rhythm, or a jarring seam.
 
-**典型案例**：睡眠状态的漂浮符号，匀速静飘比几何透视更舒服。
+**Typical case**: a sleeping state's accessory part looked OK statically, but breathing pushed it into "drifting around" over the loop — the pivot had to be re-tuned.
 
-**如何应用**：
-- 调参时**优先目视判断**，不要被"理论上应该这样"绑住
-- 透视、距离、缩放比例都要为视觉感觉服务
-- 设计师的眼睛比代码的数学更准
-
----
-
-### 5. pivot 决定动作"性格"
-
-**现象**：同一动作（旋转 / 缩放），pivot 设在不同位置，"性格"完全不同。
-
-**典型案例**：拖拽 reaction 的旋转：
-- pivot 设头顶 = 钟摆（被动、像玩偶被拎着）
-- pivot 设中心 = 自旋扭身（主动、像活物挣扎）
-
-如果要主动挣扎感，选中心 pivot；如果要被动悬挂感，选头顶 pivot。
-
-**如何应用**：
-- pivot 不是"技术细节"，是**性格选择**
-- 同一动作多试几个 pivot 位置，问自己想要什么气质
-- transform-origin 错了再好的动画也会"跑偏"
+**How to apply**:
+- **You must watch it loop in a browser for 30s+** before locking it
+- Pay attention to the loop seam (does the start/end frame's position/scale line up)
+- Pay attention to whether key elements' "absolute position" drifts over the loop
+- Don't review from a static screenshot
 
 ---
 
-### 6. 简单 ≠ 去掉活物感
+### 3. A rushed feel comes from structure, not duration
 
-**现象**：想做"很简单的动画"，结果做出来像静态贴图。
+**Symptom**: an animation feels "too fast," so you add more time — it still feels rushed.
 
-**典型案例**：拖拽 reaction 如果只是静态扭曲贴图，会看起来像死物。最简单的 reaction 也要保留眨眼 / 呼吸的"活物"感。
+**Typical case**: happy-burst V1 had 4 segments in 2.2s and felt rushed; V4 had 7 segments in the same 2.0s and felt perfect.
 
-**如何应用**：
-- 任何动画底层至少要有**呼吸 + 眨眼**两层
-- "简单"指的是不加额外装饰，不是去掉基础生命感
-- 静态贴图永远不能当桌宠状态
+**Why**: the rushed feeling comes from "several things crammed into the ending," not from the total duration being too short. Splitting 1 segment into 2-3 segments gives each one room to breathe — and the total duration can often even be compressed further.
 
----
-
-### 7. Eye-shape-library 是字符渲染标准做法
-
-**现象**：typing 状态要让眼睛显示代码符号（`> < _ : = + / \`），第一反应是用文字 / image，错。
-
-**正确做法**：把每个符号做成 SVG path 形状，构成一个**眼形库**（eye-shape-library）。眨眼 / 字符切换 / 表情都从库里选形状。
-
-**为什么**：
-- 文字渲染跨平台不一致
-- image 来回切换有 flicker
-- SVG path 是一等公民，可以 stroke / fill / morph
-
-**如何应用**：复杂表情的桌宠都该建眼形库，不要每次重新画。
+**How to apply**:
+- **Don't tune the duration first** — look at the structure (how it's segmented) first
+- Count how many "things" the animation does, and check whether each one has its own segment
+- Check whether the closing segment has 2-3 things crammed into it — that's 80% of where the rushed feeling comes from
 
 ---
 
-### 8. 长 idle 类彩蛋必须有 gap
+### 4. Visual intuition beats geometric correctness
 
-**现象**：long-idle 彩蛋（角色发呆久了的彩蛋）做完循环播放，越看越烦。
+**Symptom**: a mathematically correct animation looks wrong; something tuned by eye turns out right.
 
-**典型案例**：long-idle 彩蛋可以是 6s 左右的多段叙事，后接 1s 左右 gap 让画面回到纯 idle 才循环。
+**Typical case**: for the sleeping state's floating symbols, a constant-speed static float felt more comfortable than geometrically correct perspective.
 
-**为什么**：彩蛋的"惊喜感"来自**罕见**。连续播放 = 失去惊喜 = 变骚扰。
-
-**如何应用**：long-idle / random / 彩蛋类状态，结尾必须有 gap 回到基础 idle，再过一段再触发下一次。
-
----
-
-### 9. 复用资产 > 自建（有机形状）
-
-**现象**：花、星星、月亮、心形这类常见装饰，自建贝塞尔曲线又慢又难看。
-
-**正确做法**：**svgrepo / SVG icon 库扒**，用了就改色 + 简化。
-
-**注意**：扒的资产要看 license，开源场景用 CC0 / MIT / 公共领域的。商业场景重审。
+**How to apply**:
+- When tuning, **judge by eye first** — don't get locked into "this is theoretically how it should be"
+- Perspective, distance, and scale ratios should all serve the visual feel
+- A designer's eye is more accurate than the code's math
 
 ---
 
-### 10. 五角星 = Q 顶点过控制点
+### 5. The pivot decides the action's "personality"
 
-**现象**：自建五角星画不圆角。
+**Symptom**: for the same action (rotate / scale), setting the pivot at a different position gives it a completely different "personality."
 
-**正确做法**：用 SVG path 的 Q（quadratic bezier）顶点过控制点：
+**Typical case**: rotation for a drag reaction:
+- Pivot at the top of the head = a pendulum (passive, like a doll being held up by the scruff)
+- Pivot at the center = a self-spin twist (active, like a living thing struggling)
+
+If you want an active-struggle feel, pick the center pivot; if you want a passive-dangling feel, pick the top-of-head pivot.
+
+**How to apply**:
+- The pivot isn't "a technical detail," it's **a personality choice**
+- Try several pivot positions for the same action, and ask yourself what character you want
+- Even a great animation will "go off" if transform-origin is wrong
+
+---
+
+### 6. Simple ≠ stripped of the sense of being alive
+
+**Symptom**: trying to make "a very simple animation" ends up looking like a static sticker.
+
+**Typical case**: a drag reaction that's just a static warped image looks like a dead object. Even the simplest reaction needs to keep a sense of "being alive" via blinking/breathing.
+
+**How to apply**:
+- Every animation should have **at minimum breathing + blinking** underneath it
+- "Simple" means no extra decoration, not stripping out the basic sense of life
+- A static sticker can never serve as a desktop pet state
+
+---
+
+### 7. An eye-shape library is the standard way to render characters
+
+**Symptom**: for a typing state where the eyes need to show code symbols (`> < _ : = + / \`), the first instinct is to use text or an image — wrong.
+
+**Correct approach**: turn each symbol into an SVG path shape, forming an **eye-shape library**. Blinking / character switching / expressions all pick a shape from the library.
+
+**Why**:
+- Text rendering is inconsistent across platforms
+- Switching between images causes flicker
+- SVG paths are first-class citizens — they can be stroked, filled, and morphed
+
+**How to apply**: any desktop pet with complex expressions should build an eye-shape library, instead of redrawing each one from scratch.
+
+---
+
+### 8. A long-idle easter egg must have a gap
+
+**Symptom**: a long-idle easter egg (triggered when the character has been idle a long time) gets annoying the more it plays on a loop.
+
+**Typical case**: a long-idle easter egg can be a ~6s multi-segment narrative, followed by a ~1s gap that returns to plain idle before looping.
+
+**Why**: an easter egg's sense of surprise comes from being **rare**. Playing it continuously = losing the surprise = becoming annoying.
+
+**How to apply**: long-idle / random / easter-egg-type states must have a gap at the end that returns to base idle, and only trigger again after some time has passed.
+
+---
+
+### 9. Reuse assets > build your own (for organic shapes)
+
+**Symptom**: common decorations like flowers, stars, moons, and hearts are slow and ugly when you hand-build the bezier curves yourself.
+
+**Correct approach**: **pull from svgrepo / an SVG icon library**, then recolor + simplify.
+
+**Note**: check the license on anything you pull in — for open-source contexts use CC0/MIT/public-domain assets. Re-review carefully for commercial contexts.
+
+---
+
+### 10. A five-pointed star = Q vertices passing through the control points
+
+**Symptom**: a hand-built five-pointed star won't come out with rounded corners.
+
+**Correct approach**: use SVG path's Q (quadratic bezier) with vertices passing through the control points:
 
 ```svg
 <path d="M 0,-50 Q 11,-15 47,-15 Q 18,5 28,40 Q 0,20 -28,40 Q -18,5 -47,-15 Q -11,-15 0,-50 Z"/>
 ```
 
-5 个外顶点 + 5 个内顶点交替，每段都用 Q 而不是 L。
+5 outer vertices + 5 inner vertices alternating, every segment using Q instead of L.
 
-### 11. 脚本状态不要用普通 img 当验收入口
+### 11. Don't use a plain img as the acceptance entry point for a scripted state
 
-**现象**：本地直接打开 SVG 正常，放进 showcase 或运行时后 pointer-look / host bridge / duration probe 不工作。
+**Symptom**: the SVG works fine opened locally, but once it's placed into a showcase or a runtime, pointer-look / the host bridge / the duration probe stop working.
 
-**原因**：普通 `<img>` 不提供脚本状态需要的文档上下文。
+**Reason**: a plain `<img>` doesn't provide the document context a scripted state needs.
 
-**正确做法**：
-- 纯图像资源可以 `<img>`
-- scripted SVG 用 `<object>`、iframe/webview 或 `.svg.html`
-- 验收时看真实嵌入方式，不只看源文件
+**Correct approach**:
+- Pure image assets can use `<img>`
+- Scripted SVG should use `<object>`, an iframe/webview, or `.svg.html`
+- At acceptance time, check the real embedding method, not just the source file
 
-### 12. 移动端浏览器会放大 SVG filter 风险
+### 12. Mobile browsers amplify SVG filter risk
 
-**现象**：桌面浏览器正常，移动端或特定 WebView 里局部变成方块、马赛克、错层或发灰。
+**Symptom**: normal on desktop browsers, but parts turn blocky, mosaic-y, mis-layered, or grey on mobile or in a specific WebView.
 
-**高风险组合**：大范围 SVG filter、外部 image、clip/mask、透明阴影、缩放后的离屏渲染。
+**High-risk combination**: a large-area SVG filter, an external image, clip/mask, a transparent shadow, and scaled offscreen rendering.
 
-**正确做法**：
-- 目标设备/目标 WebView 必须实看
-- filter 覆盖范围尽量小
-- 关键识别部件不要无必要地放进大 filter group
-- 能用简单 fill/opacity/局部 shadow 表达时，不要上复杂 filter
+**Correct approach**:
+- The target device/target WebView must be checked for real
+- Keep the filter's coverage area as small as possible
+- Don't put key identifying parts inside a large filter group unnecessarily
+- When plain fill/opacity/local shadow can express it, don't reach for a complex filter
 
-不要在没核到具体根因时把问题写死成某个浏览器 bug；先把它当目标端渲染差异排查。
+Don't write the problem off as "some browser bug" before you've actually root-caused it — treat it as target-side rendering variance to investigate first.
 
-### 13. 脚本动画数值要稳定
+### 13. Scripted animation values need to be stable
 
-**现象**：眼睛或头部跟随指针时有轻微抖动，录屏里尤其明显。
+**Symptom**: slight jitter when the eyes or head follow the pointer, especially noticeable in a screen recording.
 
-**常见原因**：每帧直接使用原始浮点值、target 瞬移、输出字符串精度不稳定。
+**Common causes**: using the raw floating-point value directly every frame, the target teleporting, unstable output-string precision.
 
-**正确做法**：
-- 给 target 加短段插值或阻尼
-- 对输出值做固定精度格式化
-- 给小幅变化设死区
-- 分开调"响应速度"和"最终幅度"
+**Correct approach**:
+- Add a short interpolation or damping to the target
+- Format the output value to a fixed precision
+- Add a dead zone for small changes
+- Tune "response speed" and "final amplitude" separately
 
-### 14. 验证入口选错会制造假阴性
+### 14. Picking the wrong validation entry point produces false negatives
 
-**现象**：同一个 SVG 直开正常，放进 runtime 空白；或者本地裸开失败，实际 `<object>` / webview 正常。
+**Symptom**: the same SVG works fine opened directly but shows up blank in the runtime; or fails when opened bare locally but actually works fine in a real `<object>`/webview.
 
-**正确做法**：按 `routes/svg/conventions/validation-runbook.md` 分层验证：结构、自包含、脚本可解析、真实嵌入方式、30s 循环、目标端复验。
+**Correct approach**: validate in layers, following `routes/svg/conventions/validation-runbook.md`: structure, self-containment, script parseability, real embedding method, 30s loop, target-side re-verification.
 
-不要把 `file://`、普通 `<img>`、裸 SVG、`.svg.html`、runtime webview 的结果混成同一个结论。
+Don't lump the results from `file://`, a plain `<img>`, a bare SVG, `.svg.html`, and a runtime webview into a single conclusion.
 
-### 15. 头脸运动不要 crossfade 静态帧
+### 15. Don't crossfade static frames for head/face motion
 
-**现象**：端点截图都好看，动起来鼻梁、眼睛、腮红、耳朵和脸区边界像两张贴图互相盖住。
+**Symptom**: the endpoint screenshots all look great, but once it moves, the nose bridge, eyes, blush, ears, and face-area boundary look like two images being layered over each other.
 
-**原因**：头脸方向变化是同一套 facial plane 的连续变形，不是图片切换。
+**Reason**: a head/face directional change is a continuous deformation of the same facial plane, not an image swap.
 
-**正确做法**：按 `routes/svg/conventions/head-motion-axis.md` 做脸部语义锚点、mixer 和 `0% / 50% / 100%` 对照。
+**Correct approach**: build facial semantic anchors, a mixer, and a `0% / 50% / 100%` comparison, following `routes/svg/conventions/head-motion-axis.md`.
 
-### 16. 中线跳变通常是两套几何模型混用
+### 16. A midline snap is usually two geometric models being mixed together
 
-**现象**：左右摇头或低头看向时，过正中位置鼻梁、脸区边缘或五官突然“啪”一下。
+**Symptom**: when shaking the head left/right or looking down, the nose bridge, face-area edge, or features suddenly "snap" when crossing dead-center.
 
-**原因**：运动中的 `0` / `middle` 位姿切回另一套 raw path。
+**Reason**: the `0`/`middle` pose during motion switches back to a different raw path.
 
-**正确做法**：按 `routes/svg/conventions/rig-first.md` 的运动中性帧规则处理；头脸细节见 `routes/svg/conventions/head-motion-axis.md`。
+**Correct approach**: follow the neutral-pose-during-motion rule in `routes/svg/conventions/rig-first.md`; for head/face specifics, see `routes/svg/conventions/head-motion-axis.md`.
 
-### 17. 初始 SVG 像，不等于能动画化
+### 17. An initial SVG that looks right isn't the same as one that can be animated
 
-**现象**：PNG→SVG、AI 描图或手工描图得到的第一版 SVG 静态很好看，但一做转头、伸手、表情或状态切换就乱。
+**Symptom**: the first-pass SVG from PNG→SVG, AI tracing, or manual tracing looks great statically, but turns into a mess the moment you try a head turn, reaching out a hand, an expression, or a state switch.
 
-**原因**：初始 SVG 多半还是插画式文件，只解决“像不像”。
+**Reason**: the initial SVG is still mostly an illustration-style file, which only solves "does it look right."
 
-**正确做法**：按 `routes/svg/conventions/source-to-animation-master.md` 做第二次工程化：扁平化、调色、拆层、稳定 `id`、写 `transform-origin`、浏览器验证，再进入状态动画。
+**Correct approach**: do a second engineering pass following `routes/svg/conventions/source-to-animation-master.md`: flatten, recolor, split into layers, stabilize `id`s, write `transform-origin`, verify in a browser — then move into state animation.
 
-### 18. 整圈轮廓描线会制造 seam
+### 18. A full-contour outline stroke creates seams
 
-**现象**：静态图里的整圈描边很可爱，动画后出现双线、断线、拼接缝、clip 脏边或不该有的内轮廓。
+**Symptom**: the full-contour outline looks cute in a static image, but after animating you get double lines, broken lines, seams, dirty edges after clipping, or inner contours that shouldn't be visible.
 
-**原因**：描边跟着 path 边界跑，变形、裁切、遮挡时端点和接缝都会变成负担。
+**Reason**: the stroke follows the path boundary, so every deformation, clip, or occlusion turns the endpoints and seams into a liability.
 
-**正确做法**：不是不描线，而是不做整圈轮廓描线。详见 `routes/svg/conventions/source-to-animation-master.md`。
+**Correct approach**: it's not that you never stroke an outline — it's that you don't stroke the whole contour. See `routes/svg/conventions/source-to-animation-master.md` for details.
 
-### 19. 身体转向不要 3D 硬拧，也不要完全锁死
+### 19. Body turns shouldn't be a hard 3D twist, but shouldn't be fully locked either
 
-**现象**：身体跟着头整块旋转会变成另一个角色；完全锁死又缺少方向感，配饰、脚和手像没接上。
+**Symptom**: rotating the body as a whole block along with the head turns it into a different character; fully locking it down loses any sense of direction, and accessories/feet/hands look disconnected.
 
-**原因**：2D 桌宠的身体转向是轴线和轮廓暗示，不是真 3D 模型旋转。
+**Reason**: a 2D desktop pet's body turn is an axis-and-silhouette hint, not a real 3D model rotation.
 
-**正确做法**：按 `routes/svg/conventions/body-motion-axis.md` 建身体/配饰/脚/手锚点；通用拓扑规则见 `routes/svg/conventions/rig-first.md`。
+**Correct approach**: build body/accessory/foot/hand anchors following `routes/svg/conventions/body-motion-axis.md`; for the general topology rules, see `routes/svg/conventions/rig-first.md`.
 
-### 20. 嘴巴不要做红色贴片
+### 20. Don't make the mouth a red patch
 
-**现象**：开心嘴或惊讶嘴静态很醒目，动起来像一块贴在脸上的色块，和原嘴线、鼻子、脸部运动脱节。
+**Symptom**: a happy mouth or surprised mouth looks striking statically, but once animated it looks like a color block stuck onto the face, decoupled from the original mouth line, the nose, and the facial motion.
 
-**原因**：开口嘴不是一张覆盖图，而是原嘴线、开口裁切、内部暗面和可见边界的组合。
+**Reason**: an open mouth isn't one overlay image — it's a combination of the original mouth line, an opening clip, interior shading, and the visible boundary.
 
-**正确做法**：按 `routes/svg/conventions/expression-mouth-system.md` 建原嘴线、`opening clip`、`mouth interior` 和必要的左右收口 clip。
+**Correct approach**: build the original mouth line, an `opening clip`, `mouth interior`, and the necessary left/right-closing clip, following `routes/svg/conventions/expression-mouth-system.md`.
 
-### 21. 手部接触点不是关节
+### 21. A hand's contact point is not a joint
 
-**现象**：手伸进身体或贴身体时，接触边缘断、尖、脏，手臂像被切成两段。
+**Symptom**: when a hand reaches into or rests against the body, the contact edge breaks, turns sharp, or looks dirty, and the arm looks cut into two pieces.
 
-**原因**：把袖口 / 接触点当作运动关节，导致接触关系和弯折关系互相污染。
+**Reason**: treating the sleeve cuff/contact point as a motion joint, causing the contact relationship and the bend relationship to contaminate each other.
 
-**正确做法**：按 `routes/svg/conventions/limb-rig-points.md` 区分运动关节和接触点；接触点只描述接触、遮挡和阴影，不参与主弯折。
+**Correct approach**: distinguish motion joints from contact points following `routes/svg/conventions/limb-rig-points.md`; a contact point only describes contact, occlusion, and shading, and doesn't take part in the main bend.
 
-### 22. 抬脚不是直线平移
+### 22. Lifting a foot is not a straight-line translation
 
-**现象**：脚一离地就像贴片飘走，脚尖脚跟互穿，落地线也漂。
+**Symptom**: the moment a foot leaves the ground it looks like a patch floating away, the toe and heel interpenetrate, and the ground line drifts too.
 
-**原因**：脚属于身体承重链，不能脱离髋部和接地线单独上下平移。
+**Reason**: the foot belongs to the body's weight-bearing chain, and can't be translated up and down independently of the hip and the ground line.
 
-**正确做法**：脚心绕髋画弧，脚底回到同一条接地线；具体见 `routes/svg/conventions/limb-rig-points.md`。
+**Correct approach**: the sole traces an arc around the hip, and returns to the same ground line when landing; see `routes/svg/conventions/limb-rig-points.md` for specifics.
 
-### 23. 单脚动作必须问重心
+### 23. A single-foot action must ask about the center of gravity
 
-**现象**：走路、踮脚或单脚抬起的局部动画都对，但角色整体像要摔倒。
+**Symptom**: the local animation for walking, standing on tiptoe, or lifting one foot is all individually correct, but the character as a whole looks like it's about to fall over.
 
-**原因**：承重脚上方没有 `COM`，身体轴、髋部和脚轨迹不属于同一姿态。
+**Reason**: there's no `COM` above the weight-bearing foot — the body axis, hips, and foot trajectory don't belong to the same pose.
 
-**正确做法**：先画重心轴和承重脚，再调脚的高度、节奏和形变。
-
----
-
-## 反模式（don't）
-
-- ❌ **同动画 SVG + Canvas 混用**：见 `conventions/svg-vs-canvas.md`
-- ❌ **基础动作（idle/blink）用 Canvas**：杀鸡用牛刀
-- ❌ **跨文件 `<use href>` 引共用资产**：破坏自包含范式
-- ❌ **transform-origin 不显式设**：默认值会让你怀疑人生
-- ❌ **animation-delay 用整秒**：所有元素同步抽搐，不像活物
-- ❌ **CSS animation 默认 linear**：linear 全是"机器感"
-- ❌ **`steps()` 用在 SVG 路线非像素动画上**：steps 是像素风专属
-- ❌ **调参页直接当交付页**：按 `conventions/tuner-to-canonical.md` 烘焙干净 canonical
-- ❌ **只在桌面浏览器验收要上移动端的状态**：target WebView / mobile Safari / Android WebView 都可能有不同 SVG 栅格化表现
+**Correct approach**: draw the center-of-gravity axis and the weight-bearing foot first, then tune the foot's height, rhythm, and deformation.
 
 ---
 
-## 进阶心智模型
+## Anti-patterns (don't)
 
-### "小活泼"通则
-
-idle 类状态的 default：**4-8s 缓周期 + 5-10% 微妙幅度 + 眼睛主导**。
-
-- 周期太快（< 3s）= 紧张焦虑
-- 周期太慢（> 10s）= 死寂
-- 幅度太大（> 15%）= 过度活泼像玩具
-- 幅度太小（< 3%）= 看不出来在动
-- 眼睛不动 = 死物
-
-### "三层叠"通则（apple-precise 专属）
-
-任何浅色模式静帧必须有：
-- 外层光晕（淡）
-- 中层主描边
-- 内层高光
-
-少一层都会"飘"。详见 `presets/apple-precise.md`。
-
-### "异步循环"通则
-
-多个动作叠加的状态（如 sleeping = 呼吸 + 帽子 sway + Z 字），三个元素的循环周期**必须不一样**：
-
-- 呼吸 4s
-- 帽子 sway 6s
-- Z 字 1.8s 间隔 / 2.9s 寿命
-
-不一样才像"活物"，一样会显得像机器。
+- ❌ **Mixing SVG + Canvas in the same animation**: see `conventions/svg-vs-canvas.md`
+- ❌ **Using Canvas for basic actions (idle/blink)**: overkill
+- ❌ **Referencing shared assets across files via `<use href>`**: breaks the self-contained paradigm
+- ❌ **Not explicitly setting transform-origin**: the default value will make you question reality
+- ❌ **Using whole-second values for animation-delay**: every element twitches in sync, not lifelike
+- ❌ **CSS animation defaulting to linear**: linear always reads as "mechanical"
+- ❌ **Using `steps()` for non-pixel-art SVG-route animation**: `steps()` is exclusive to the pixel-art style
+- ❌ **Treating the tuning page as the delivery page directly**: bake a clean canonical file following `conventions/tuner-to-canonical.md`
+- ❌ **Only validating on a desktop browser when the state will ship on mobile**: the target WebView / mobile Safari / Android WebView can each rasterize SVG differently
 
 ---
 
-## 调试工具书
+## Advanced mental models
 
-调试动画时按这个顺序：
+### The "small liveliness" rule of thumb
 
-1. **慢速播放**：CSS `animation-duration` 改成 10x，看每一帧
-2. **暂停看静帧**：`animation-play-state: paused`，每帧截图
-3. **关闭其他动画**：只跑你在调的那个，不要被其他动画干扰
-4. **查 transform-origin**：80% 的"位置漂移"是 origin 错
-5. **看循环衔接**：首尾帧应该完全相同（位置/缩放/旋转）
-6. **dpi/缩放测试**：浏览器 zoom 50% / 100% / 200% 都看一遍
-7. **换入口验证**：直开、预览壳、runtime/showcase 至少覆盖一个与交付等价的入口
+Default for idle-type states: **a 4-8s slow cycle + 5-10% subtle amplitude + eyes leading**.
+
+- Too fast a cycle (< 3s) = anxious, tense
+- Too slow a cycle (> 10s) = lifeless
+- Too big an amplitude (> 15%) = overly bouncy, toy-like
+- Too small an amplitude (< 3%) = can't tell it's moving
+- Eyes not moving = a dead object
+
+### The "three-layer stack" rule of thumb (apple-precise exclusive)
+
+Any light-mode static frame must have:
+- An outer glow (faint)
+- A middle main stroke
+- An inner highlight
+
+Missing any one layer will make it look "flat" / unanchored. See `presets/apple-precise.md` for details.
+
+### The "asynchronous loop" rule of thumb
+
+For a state that layers multiple actions (e.g. sleeping = breathing + hat sway + Z's), the three elements' loop periods **must differ**:
+
+- Breathing: 4s
+- Hat sway: 6s
+- Z's: 1.8s interval / 2.9s lifespan
+
+Different periods are what reads as "alive" — identical periods will look mechanical.
+
+---
+
+## Debugging playbook
+
+When debugging an animation, follow this order:
+
+1. **Slow-motion playback**: change the CSS `animation-duration` to 10x, watch every frame
+2. **Pause and look at a still frame**: `animation-play-state: paused`, screenshot each frame
+3. **Turn off other animations**: only run the one you're tuning, don't get interfered with by the others
+4. **Check transform-origin**: 80% of "positional drift" is a wrong origin
+5. **Check the loop seam**: the start and end frame should be exactly identical (position/scale/rotation)
+6. **DPI/zoom testing**: check browser zoom at 50% / 100% / 200%
+7. **Switch entry points to verify**: opening directly, a preview shell, and the runtime/showcase — cover at least one entry point equivalent to what's actually delivered

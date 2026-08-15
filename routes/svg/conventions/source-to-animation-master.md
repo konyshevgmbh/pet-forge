@@ -1,158 +1,158 @@
-# 素材到动画母版约定
+# Source-to-animation-master conventions
 
-> 概念图解决“角色是谁”，初始 SVG 解决“像不像”，动画母版解决“能不能长期稳定地动”。
+> The concept sketch answers "who is this character." The initial SVG answers "does it look right." The animation master answers "can it move stably over the long haul."
 
-## 推荐链路
+## The recommended pipeline
 
-可复用链路：
+A reusable pipeline:
 
 ```text
-角色设定 / 概念图 / 参考 PNG
--> 角色拓扑盘点
-   - 主体：只有头 / 头+身体 / 单主体 / 道具形
-   - 脸部：眼睛 / 嘴巴 / 腮红 / 表情符号
-   - 附属结构：手脚 / 耳朵 / 尾巴 / 触角 / 道具
-   - 支撑关系：接地 / 悬浮 / 贴边 / 挂载
--> PNG→SVG 矢量化 / AI 或人工描图得到初始 SVG
--> 扁平化、调色、拆层、命名
--> 建立可计算角色系统（只为存在的结构建合同）
-   - 脸部方向：左右 yaw / 上下 pitch / 视线 mixer
-   - 主体与附属结构：主轴 / 骨骼点（如有）/ 接触点 / 重心或悬浮基准
-   - 表情嘴巴（如有）：表情路径板 / 开口裁切 / 原嘴线收口
--> 写 transform-origin、层级和验证入口
--> 浏览器验证
--> 可继续做动画的 layered master
+character design / concept sketch / reference PNG
+-> character topology inventory
+   - main body: head only / head+body / single blob / prop-shaped
+   - face: eyes / mouth / blush / emoji-style symbols
+   - appendages: hands/feet / ears / tail / antennae / props
+   - support relationship: grounded / floating / edge-mounted / attached
+-> PNG→SVG vectorization / AI or manual tracing to get an initial SVG
+-> flatten, recolor, split into layers, name things
+-> build a computable character system (only write a contract for structures that actually exist)
+   - facial direction: left/right yaw / up/down pitch / gaze mixer
+   - main body and appendages: main axis / rig points (if any) / contact points / center of gravity or floating baseline
+   - expression/mouth (if any): expression path board / opening clip / original-mouth-line closing
+-> write transform-origin, layering, and a verification entry point
+-> verify in a browser
+-> a layered master that's ready for further animation
 ```
 
-概念图如果是角色动画设定板，会比普通插画更有价值。它不只是“长什么样”，还可能已经藏着后续 rig 的提示。重点看它是否包含：
+If the concept sketch is a character animation design sheet, it's more valuable than a plain illustration. It's not just "what it looks like" — it may already carry hints for the later rig. Check whether it includes:
 
-- 三视图或方向参考；
-- 动作示例；
-- 可拆分部件提示；
-- 头、身体、手脚、耳朵、尾巴等旋转轴意识；
-- 表情和状态变化。
+- Multiple-view or directional references;
+- Example poses/actions;
+- Hints about which parts can be split apart;
+- Awareness of rotation axes for the head, body, hands/feet, ears, tail, etc.;
+- Expression and state changes.
 
-这些信息是制作策略，不是可以直接交付的资产。
+This information is production strategy, not an asset that can be delivered as-is.
 
-## 描图和矢量化的定位
+## Where tracing and vectorization fit in
 
-资源包已经提供默认描图建议：先拿到一张干净透明 PNG，再用 `routes/svg/tools/png2svg/` 的 `png2svg + vtracer` 转成初始 SVG。它适合低色数、边界干净、扁平卡通或图标类角色。
+The toolkit already provides a default tracing recommendation: first get a clean, transparent PNG, then convert it into an initial SVG with `png2svg + vtracer` from `routes/svg/tools/png2svg/`. It works well for low-color-count, clean-edged, flat-cartoon or icon-style characters.
 
-如果源素材是复杂概念图或角色设定板，也可以让强模型或人工先描出一版 SVG，用来快速抓比例、部件位置和主色区域。
+If the source material is a complex concept sketch or character design sheet, you can also have a strong model or a human trace an SVG first, to quickly capture proportions, part positions, and primary color regions.
 
-两条入口的定位一样：把素材第一次转成可继续编辑的 SVG 角色，而不是把最终动画母版一次做完。
+Both entry points serve the same purpose: turning the source material into an editable SVG character for the first time — not producing the final animation master in one shot.
 
-判断这一步是否成功，不看它能不能直接动画，而看它是否把概念图推进成“可编辑母版”：
+Judge whether this step succeeded not by whether it can be animated directly, but by whether it moved the concept sketch forward into an "editable master":
 
-- 大比例像；
-- 头、身体、手脚、五官、配饰位置可用；
-- 主色区域边界有基础；
-- 文件是真 SVG，不是内嵌位图。
+- The proportions are close;
+- The head, body, hands/feet, features, and accessory positions are usable;
+- The primary color regions have a basic boundary;
+- The file is a real SVG, not an embedded bitmap.
 
-它不负责最终动画结构。不要因为矢量化或描图结果看起来已经像，就直接拿去做状态动画。
+It isn't responsible for the final animation structure. Don't take the vectorization or tracing result straight into state animation just because it already looks close enough.
 
-版本角色要分清：
+Keep the character's versions distinct:
 
-- 比例源：解决“像不像”；
-- 第一版分层动画母版：开始解决“能不能动”。
+- Proportion source: solves "does it look right";
+- First-pass layered animation master: starts solving "can it move."
 
-## 初始 SVG 的常见问题
+## Common problems with the initial SVG
 
-初始描图 SVG 通常还是插画式文件：
+An initial traced SVG is usually still an illustration-style file:
 
-- 渐变多，颜色依赖复杂；
-- 图层顺序面向静态观感，不面向动画控制；
-- `id` 不稳定或没有语义；
-- `transform-origin` 没写清楚；
-- 手、脚、耳朵、五官、配饰可能和主体混在一起；
-- clip / mask / filter 没经过目标浏览器验证；
-- 脸、身体、手脚只是 path，还不是可计算锚点系统。
+- Lots of gradients, complex color dependencies;
+- Layer order aimed at static appearance, not animation control;
+- `id`s are unstable or not semantic;
+- `transform-origin` isn't spelled out clearly;
+- Hands, feet, ears, features, and accessories may be mixed together with the main body;
+- clip/mask/filter haven't been verified in the target browser;
+- The face, body, and hands/feet are just paths, not yet a computable anchor system.
 
-它解决的是“像不像”，不是“能不能动”。
+It solves "does it look right," not "can it move."
 
-## 工程化成动画母版
+## Engineering it into an animation master
 
-进入动画母版前，至少做一轮结构化处理。
+Do at least one round of structural processing before moving into the animation master.
 
-先按 `layered-master.md` 把插画式 SVG 改成分层母版：稳定 `id`、稳定层级、明确 origin、可动画部件可单独控制。
+Follow `layered-master.md` to turn the illustration-style SVG into a layered master first: stable `id`s, stable layering, an explicit origin, and animatable parts that can each be controlled independently.
 
-额外注意：
+Additional things to watch for:
 
-- 去掉不必要的渐变，改成更稳定的大色块；
-- 重新调色，让浅色背景和桌面悬浮场景可读；
-- 在浏览器里打开验证，不只信编辑器预览；
-- 记录哪一版是比例源，哪一版开始是动画母版。
+- Remove unnecessary gradients, switch to more stable flat color blocks;
+- Recolor so it stays readable against a light background and in a floating desktop scene;
+- Verify by opening it in a browser, don't just trust the editor's preview;
+- Record which version is the proportion source and which version is where the animation master starts.
 
-第一版动画母版不需要一次变完美，但必须能被后续 tuner 和状态文件稳定复制。
+The first version of the animation master doesn't need to be perfect in one pass, but it must be reliably copyable by later tuners and state files.
 
-不要把“去渐变、扁平化、拆层、命名”理解成审美降级。它们是为了让每个状态都能复用同一套边界、锚点和遮挡关系。
+Don't interpret "remove gradients, flatten, split into layers, name things" as a downgrade in aesthetics. They exist so every state can reuse the same boundaries, anchors, and occlusion relationships.
 
-## 描线取舍
+## The tradeoff on outline strokes
 
-结论：不是不描线，是不做整圈轮廓描线。
+Bottom line: it's not that you never stroke an outline — it's that you don't stroke the *entire* contour.
 
-概念图用描线讲清角色：哪里是头、身体、手脚、配饰，哪里可拆，哪里有旋转轴。最终 SVG 要用少线、大色块、fill、clip 和阴影保证动画稳定。
+A concept sketch uses outlines to explain the character clearly: where the head, body, hands/feet, and accessories are, what can be split apart, and where the rotation axes are. The final SVG needs to keep the animation stable using fewer lines, large color blocks, fill, clip, and shading.
 
-桌宠长期悬浮在桌面上，重描边会把角色推向贴纸或表情包质感。静态设定图里好看的整圈描边，在小尺寸、透明背景、桌面窗口和长时间循环里会变得很硬。
+A desktop pet floats over the desktop for extended periods — heavy outlining pushes the character toward a sticker or emoji look. A full-contour outline that looks great in a static design sheet turns harsh at small sizes, on a transparent background, in a desktop window, and over long loop playback.
 
-整圈描边在 SVG 动画里容易制造：
+A full-contour outline in SVG animation tends to produce:
 
-- 双线；
-- 断线；
-- 圆头线头；
-- 拼接缝；
-- 额外 seam；
-- clip 裁切后的脏边；
-- 手进入身体或脸部转向时不该露出的内侧轮廓。
+- Double lines;
+- Broken lines;
+- Rounded line-end caps;
+- Seams where pieces join;
+- Extra seams;
+- Dirty edges after a clip cut;
+- Inner contours showing through that shouldn't be visible when a hand enters the body or the face turns.
 
-保留功能线：
+Keep functional lines:
 
-- 眉毛；
-- 嘴巴；
-- 鼻口表情线；
-- 少量必要的小部件边界。
+- Eyebrows;
+- Mouth;
+- Nose/mouth expression lines;
+- A small number of necessary small-part boundaries.
 
-大轮廓尽量依赖 fill、层级、局部阴影和裁切。角色会转头、低头、伸手、入睡或被 clip 时，少线结构通常比整圈描边更稳。
+Rely on fill, layering, local shading, and clipping for the large silhouette as much as possible. When the character turns its head, looks down, reaches out a hand, falls asleep, or gets clipped, a leaner-line structure is usually more stable than a full-contour outline.
 
-## 可计算角色系统
+## The computable character system
 
-动画母版不是一张“整理干净的 SVG”，而是一套可计算角色系统。
+The animation master isn't just "a tidied-up SVG" — it's a computable character system.
 
-建立系统前先做角色拓扑盘点。不要默认每个角色都有完整头、身体、手、脚、嘴巴。只有头的角色、软团角色、道具形角色和完整吉祥物，需要的合同不一样。
+Do a character topology inventory before building the system. Don't assume every character has a complete head, body, hands, feet, and mouth. A head-only character, a soft-blob character, a prop-shaped character, and a full mascot character each need a different contract.
 
-在同一个维度里并列判断这些合同：
+Judge these contracts side by side, along the same dimension:
 
-- 脸部方向合同：有脸部方向需求时，说明脸部轮廓、浅色脸区、眼睛、鼻子、嘴、腮红、耳朵如何随 `yaw`、`pitch` 和 mixer 运动；
-- 主体与附属结构合同：说明主体主轴、重心 / 悬浮基准在哪里；有手脚、尾巴、触角、道具时，再说明骨骼点、接触点和父级锚点；
-- 表情嘴巴合同：有嘴巴或多表情需求时，说明表情路径板怎么复用，嘴巴是 path 替换、开口裁切，还是原嘴线收口。
+- Facial direction contract: if there's a facial direction requirement, describe how the face contour, light-colored face area, eyes, nose, mouth, blush, and ears move with `yaw`, `pitch`, and the mixer;
+- Main body and appendage contract: describe where the main body's axis and center of gravity/floating baseline are; if there are hands/feet, tail, antennae, or props, also describe the rig points, contact points, and parent anchors;
+- Expression/mouth contract: if there's a mouth or multiple expressions, describe how the expression path board is reused, and whether the mouth is a path swap, an opening clip, or an original-mouth-line closing.
 
-进入多状态前，至少要回答：
+Before moving into multiple states, you should be able to answer at least:
 
-- 角色边界是否能由锚点重建，而不是只靠 path 字符串；
-- 角色实际存在的结构是否都有对应合同，没有的结构是否被明确跳过；
-- 五官、腮红、耳朵、配饰或道具分别属于哪个运动平面 / 父级结构；
-- 运动中性帧是否来自同一套模型。
+- Can the character's boundary be reconstructed from anchors, rather than relying only on path strings;
+- Does every structure the character actually has have a corresponding contract, and are the structures it doesn't have explicitly skipped;
+- Which motion plane / parent structure do the features, blush, ears, accessories, or props each belong to;
+- Does the neutral pose during motion come from the same model.
 
-如果这些问题答不上来，先不要扩展状态。继续做更多静态帧，只会增加后续返工面积。
+If you can't answer these questions, don't expand into more states yet. Making more static frames will only increase the amount of rework later.
 
-## 验收清单
+## Acceptance checklist
 
-初始 SVG 升级成动画母版前检查：
+Check before upgrading an initial SVG into an animation master:
 
-- 概念图里的拆分和轴线信息已经被转成部件和锚点；
-- 初始 SVG 里的渐变、clip、mask、filter 没有成为后续动画负担；
-- 所有未来会动的部件都有稳定 `id`；
-- 关键部件有明确 pivot / origin；
-- 脸部主色边界、五官、腮红和耳朵可独立控制；
-- 身体、手、脚、配饰可独立控制；
-- 大轮廓不依赖整圈描边保持识别；
-- 浏览器直接打开后层级、颜色、遮挡都正常。
+- The splits and axis information from the concept sketch have been converted into parts and anchors;
+- The gradients, clips, masks, and filters in the initial SVG haven't become a burden for later animation;
+- Every part that will move in the future has a stable `id`;
+- Key parts have an explicit pivot/origin;
+- The face's primary-color boundary, features, blush, and ears can be controlled independently;
+- The body, hands, feet, and accessories can be controlled independently;
+- The large silhouette doesn't rely on a full-contour outline to stay recognizable;
+- Opening the file directly in a browser shows correct layering, colors, and occlusion.
 
-新角色动画开工前再问一遍：
+Ask again before starting animation on a new character:
 
-- 角色边界是否可计算；
-- 主体主轴、重心或悬浮基准在哪里；
-- 如果有手脚、尾巴、触角、道具，它们的骨骼点、接触点和父级锚点在哪里；
-- 如果有嘴巴或表情，嘴巴是 path 替换、遮罩开口，还是原嘴线收口；
-- 如果有脸部方向，五官属于哪个运动平面；
-- 中间帧是否来自同一套模型。
+- Is the character's boundary computable;
+- Where is the main body's axis, center of gravity, or floating baseline;
+- If there are hands/feet, a tail, antennae, or props, where are their rig points, contact points, and parent anchors;
+- If there's a mouth or expressions, is the mouth a path swap, a masked opening, or an original-mouth-line closing;
+- If there's a facial direction, which motion plane do the features belong to;
+- Do the in-between frames come from the same model.

@@ -24,15 +24,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 
 if (args.length === 0) {
-  console.log('用法: node gen-video.js <动画名> --image <首帧图片路径> [选项]');
-  console.log('\n选项:');
-  console.log('  --image <路径>      首帧参考图片（必填，除非用 --no-first-frame）');
-  console.log('  --last-frame <路径> 尾帧参考图片（循环/回归型通常同 --image）');
-  console.log('  --api doubao        选择 API（当前公开版仅保留 doubao）');
-  console.log('  --model <模型名>    覆盖默认视频模型');
-  console.log('  --ref-mode          图片作为角色参考，不锚定首帧');
-  console.log('  --no-first-frame    不设首帧，只设尾帧');
-  console.log('  --no-chroma         跳过 chroma_key 后处理');
+  console.log('Usage: node gen-video.js <animation-name> --image <first-frame-image-path> [options]');
+  console.log('\nOptions:');
+  console.log('  --image <path>      the first-frame reference image (required, unless using --no-first-frame)');
+  console.log('  --last-frame <path> the last-frame reference image (usually the same as --image for loop/return types)');
+  console.log('  --api doubao        choose the API (the current public version only keeps doubao)');
+  console.log('  --model <name>      override the default video model');
+  console.log('  --ref-mode          use the image as a character reference, without anchoring the first frame');
+  console.log('  --no-first-frame    don\'t set a first frame, only a last frame');
+  console.log('  --no-chroma         skip the chroma_key post-processing step');
   process.exit(0);
 }
 
@@ -57,39 +57,39 @@ const noFirstFrame = args.includes('--no-first-frame');
 const skipChroma = args.includes('--no-chroma');
 
 if (apiChoice !== 'doubao') {
-  throw new Error('当前公开版仅保留 --api doubao');
+  throw new Error('The current public version only keeps --api doubao');
 }
 
 if (!ANIMATIONS[animKey]) {
-  console.error(`❌ 未知动画: "${animKey}"`);
+  console.error(`❌ Unknown animation: "${animKey}"`);
   process.exit(1);
 }
 const anim = ANIMATIONS[animKey];
 if (!noFirstFrame && (!imagePath || !fs.existsSync(imagePath))) {
-  console.error('❌ 请用 --image 指定首帧图片路径，或用 --no-first-frame 跳过');
+  console.error('❌ Please specify the first-frame image path with --image, or skip it with --no-first-frame');
   process.exit(1);
 }
 if (lastFramePath && !fs.existsSync(lastFramePath)) {
-  console.error(`❌ 尾帧图片不存在: ${lastFramePath}`);
+  console.error(`❌ Last-frame image not found: ${lastFramePath}`);
   process.exit(1);
 }
 if (noFirstFrame && !lastFramePath) {
-  console.error('❌ --no-first-frame 必须同时提供 --last-frame');
+  console.error('❌ --no-first-frame must be used together with --last-frame');
   process.exit(1);
 }
 if (anim.anchor === 'different' && !lastFramePath) {
-  console.error('❌ 过渡型动画必须用 --last-frame 指定不同的尾帧');
+  console.error('❌ A transition-type animation must specify a different last frame with --last-frame');
   process.exit(1);
 }
 if (
   anim.anchor === 'different' && !refMode && !noFirstFrame &&
   path.resolve(imagePath) === path.resolve(lastFramePath)
 ) {
-  console.error('❌ 过渡型动画的 --image 与 --last-frame 必须使用不同文件');
+  console.error('❌ A transition-type animation\'s --image and --last-frame must be different files');
   process.exit(1);
 }
 if (refMode && noFirstFrame) {
-  console.error('❌ --ref-mode 与 --no-first-frame 不能同时使用');
+  console.error('❌ --ref-mode and --no-first-frame can\'t be used together');
   process.exit(1);
 }
 
@@ -99,10 +99,10 @@ const prompt = buildPrompt(animKey);
 
 const outDir = path.join(__dirname, 'output', animKey);
 
-console.log(`\n🎬 生成视频: ${animKey} (${anim.name})`);
-console.log(`   首帧图片: ${imagePath || '(none)'}`);
+console.log(`\n🎬 Generating video: ${animKey} (${anim.name})`);
+console.log(`   First-frame image: ${imagePath || '(none)'}`);
 console.log('   API: doubao');
-console.log(`   输出目录: ${outDir}\n`);
+console.log(`   Output directory: ${outDir}\n`);
 
 // ── Generate video ───────────────────────────────────────
 
@@ -118,15 +118,15 @@ try {
   if (noFirstFrame) {
     dataUri = null;
     if (lastSrc) {
-      console.log(`  模式: 仅尾帧锚定 → ${lastSrc}`);
+      console.log(`  Mode: last-frame anchoring only → ${lastSrc}`);
     }
   } else if (refMode) {
-    videoPrompt = `[图1]是角色参考图。${prompt}`;
-    console.log('  模式: 参考图（不锚定首帧）');
-    if (lastSrc) console.log(`  尾帧锚定: ${lastSrc}`);
+    videoPrompt = `[Image 1] is the character reference image. ${prompt}`;
+    console.log('  Mode: reference image (first frame not anchored)');
+    if (lastSrc) console.log(`  Last-frame anchor: ${lastSrc}`);
   } else {
     if (lastSrc) {
-      console.log(`  首尾帧锚定: ${lastSrc === imagePath ? '首尾帧相同' : lastSrc}`);
+      console.log(`  First/last-frame anchor: ${lastSrc === imagePath ? 'first and last frame are the same' : lastSrc}`);
     }
   }
 
@@ -153,36 +153,36 @@ try {
     const buf = await downloadBuffer(videoUrl);
     fs.mkdirSync(outDir, { recursive: true });
     fs.writeFileSync(videoPath, buf);
-    console.log(`  ✓ 视频已下载: ${videoPath}`);
+    console.log(`  ✓ Video downloaded: ${videoPath}`);
     results.push(videoPath);
   } else {
     const jsonPath = path.join(outDir, 'doubao-video-raw.json');
     fs.mkdirSync(outDir, { recursive: true });
     fs.writeFileSync(jsonPath, JSON.stringify(result, null, 2));
-    console.log(`  ⚠ 未找到视频 URL，已保存原始响应: ${jsonPath}`);
+    console.log(`  ⚠ No video URL found, saved the raw response instead: ${jsonPath}`);
     process.exitCode = 1;
   }
 } catch (err) {
-  console.error(`  ❌ 视频生成失败: ${err.message}`);
+  console.error(`  ❌ Video generation failed: ${err.message}`);
   process.exitCode = 1;
 }
 
 // ── Chroma-key post-processing ───────────────────────────
 
 if (!skipChroma && results.length > 0) {
-  console.log('\n── chroma_key 后处理 ──\n');
+  console.log('\n── chroma_key post-processing ──\n');
   const chromaScript = path.join(__dirname, 'chroma_key.py');
 
   if (!fs.existsSync(chromaScript)) {
-    console.log('  ❌ chroma_key.py 未找到，无法完成后处理');
-    console.log('  手动运行: python chroma_key.py <视频路径> <输出.apng>');
+    console.log('  ❌ chroma_key.py not found, can\'t complete post-processing');
+    console.log('  Run manually: python chroma_key.py <video-path> <output.apng>');
     process.exitCode = 1;
   } else {
     const { spawnSync } = await import('child_process');
     for (const videoPath of results) {
       const apngPath = videoPath.replace('.mp4', '.apng');
       try {
-        console.log(`  处理: ${videoPath}`);
+        console.log(`  Processing: ${videoPath}`);
         const invocation = buildChromaInvocation({
           scriptPath: chromaScript,
           videoPath,
@@ -194,12 +194,12 @@ if (!skipChroma && results.length > 0) {
           cwd: __dirname,
         });
         if (processed.error || processed.status !== 0) {
-          throw processed.error || new Error(`退出码 ${processed.status}`);
+          throw processed.error || new Error(`Exit code ${processed.status}`);
         }
         console.log(`  ✓ APNG: ${apngPath}`);
       } catch (err) {
-        console.error(`  ❌ chroma_key 失败: ${err.message}`);
-        console.log(`  手动运行: python "${chromaScript}" "${videoPath}" "${apngPath}"`);
+        console.error(`  ❌ chroma_key failed: ${err.message}`);
+        console.log(`  Run manually: python "${chromaScript}" "${videoPath}" "${apngPath}"`);
         process.exitCode = 1;
       }
     }
@@ -210,6 +210,6 @@ if (!skipChroma && results.length > 0) {
 
 console.log(`\n${'─'.repeat(50)}`);
 if (results.length === 0) process.exitCode = 1;
-console.log(`${process.exitCode ? '❌ 未完成' : '✅ 完成'}！共生成 ${results.length} 个视频`);
+console.log(`${process.exitCode ? '❌ Not complete' : '✅ Done'}! Generated ${results.length} video(s) total`);
 results.forEach(f => console.log(`   ${f}`));
 console.log('');

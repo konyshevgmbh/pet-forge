@@ -34,19 +34,19 @@ if (args.includes('--list') || args.includes('-l')) {
 }
 
 if (args.length === 0) {
-  console.log('用法: node gen-images.js <动画名> [选项]');
-  console.log('      node gen-images.js --prompt "..." --output reference/main-ref.png');
-  console.log('      node gen-images.js --list    列出所有可用动画');
-  console.log('\n选项:');
-  console.log('  --api doubao      选择 API（当前公开版仅保留 doubao）');
-  console.log('  --count <数量>    生成几张（默认 1）');
-  console.log('  --model <模型名>  覆盖默认图片模型');
+  console.log('Usage: node gen-images.js <animation-name> [options]');
+  console.log('       node gen-images.js --prompt "..." --output reference/main-ref.png');
+  console.log('       node gen-images.js --list    list all available animations');
+  console.log('\nOptions:');
+  console.log('  --api doubao      choose the API (the current public version only keeps doubao)');
+  console.log('  --count <n>       how many to generate (default 1)');
+  console.log('  --model <name>    override the default image model');
   process.exit(0);
 }
 
 function assertSupportedApi(apiChoice) {
   if (apiChoice !== 'doubao') {
-    throw new Error('当前公开版仅保留 --api doubao');
+    throw new Error('The current public version only keeps --api doubao');
   }
 }
 
@@ -64,7 +64,7 @@ async function saveFirstImageResult(result, outputPath) {
   const jsonPath = outputPath.replace(/\.[^.]+$/, '') + '-raw.json';
   fs.mkdirSync(path.dirname(path.resolve(jsonPath)), { recursive: true });
   fs.writeFileSync(jsonPath, JSON.stringify(result, null, 2));
-  console.log(`  ⚠ 未找到图片数据，已保存原始响应: ${jsonPath}`);
+  console.log(`  ⚠ No image data found, saved the raw response instead: ${jsonPath}`);
   return null;
 }
 
@@ -76,7 +76,7 @@ const directPrompt = getArg('--prompt', null);
 if (directPrompt) {
   const outputPath = getArg('--output', 'reference/main-ref.png');
 
-  console.log(`\n🎨 生成参考图: ${outputPath}`);
+  console.log(`\n🎨 Generating reference image: ${outputPath}`);
   console.log('   API: doubao\n');
 
   try {
@@ -85,24 +85,24 @@ if (directPrompt) {
     });
     const saved = await saveFirstImageResult(result, outputPath);
     if (!saved) process.exit(1);
-    console.log(`\n✅ 完成: ${saved}\n`);
+    console.log(`\n✅ Done: ${saved}\n`);
     process.exit(0);
   } catch (err) {
-    console.error(`  ❌ 生图失败: ${err.message}`);
+    console.error(`  ❌ Image generation failed: ${err.message}`);
     process.exit(1);
   }
 }
 
 const animKey = args[0];
 if (!ANIMATIONS[animKey]) {
-  console.error(`❌ 未知动画: "${animKey}"`);
+  console.error(`❌ Unknown animation: "${animKey}"`);
   listAnimations();
   process.exit(1);
 }
 
 const count = parseInt(getArg('--count', '1'), 10);
 if (!Number.isInteger(count) || count < 1) {
-  throw new Error('--count 必须是正整数');
+  throw new Error('--count must be a positive integer');
 }
 
 // ── Output setup ─────────────────────────────────────────
@@ -112,9 +112,9 @@ const outDir = path.join(__dirname, 'output', animKey);
 const prompt = buildPrompt(animKey);
 const anim = ANIMATIONS[animKey];
 
-console.log(`\n🎨 生成图片: ${animKey} (${anim.name})`);
-console.log(`   API: doubao, 数量 ${count}`);
-console.log(`   输出目录: ${outDir}\n`);
+console.log(`\n🎨 Generating images: ${animKey} (${anim.name})`);
+console.log(`   API: doubao, count ${count}`);
+console.log(`   Output directory: ${outDir}\n`);
 
 // ── Generate ─────────────────────────────────────────────
 
@@ -125,7 +125,7 @@ console.log('── Doubao / Volcengine image generation ──');
 for (let i = 0; i < count; i++) {
   try {
     const tag = `doubao-${String(i + 1).padStart(2, '0')}`;
-    console.log(`\n  [${tag}] 生成中...`);
+    console.log(`\n  [${tag}] generating...`);
     const result = await doubaoGenerateImage(prompt, {
       model: modelOpt || undefined,
     });
@@ -149,11 +149,11 @@ for (let i = 0; i < count; i++) {
       const jsonPath = path.join(outDir, `${tag}-raw.json`);
       fs.mkdirSync(outDir, { recursive: true });
       fs.writeFileSync(jsonPath, JSON.stringify(result, null, 2));
-      console.log(`  ⚠ 未找到图片数据，已保存原始响应: ${jsonPath}`);
+      console.log(`  ⚠ No image data found, saved the raw response instead: ${jsonPath}`);
       failures++;
     }
   } catch (err) {
-    console.error(`  ❌ 生图失败: ${err.message}`);
+    console.error(`  ❌ Image generation failed: ${err.message}`);
     failures++;
   }
 }
@@ -162,8 +162,8 @@ for (let i = 0; i < count; i++) {
 
 console.log(`\n${'─'.repeat(50)}`);
 if (failures || results.length === 0) process.exitCode = 1;
-console.log(`${process.exitCode ? '❌ 未完成' : '✅ 完成'}！共生成 ${results.length} 张图片:`);
+console.log(`${process.exitCode ? '❌ Not complete' : '✅ Done'}! Generated ${results.length} image(s) total:`);
 results.forEach(f => console.log(`   ${f}`));
 if (results.length) {
-  console.log(`\n去 ${outDir} 挑选你喜欢的图片，然后用 gen-video.js 生成视频。\n`);
+  console.log(`\nGo pick the one you like from ${outDir}, then generate the video with gen-video.js.\n`);
 }

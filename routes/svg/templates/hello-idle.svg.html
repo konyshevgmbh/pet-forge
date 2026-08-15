@@ -1,30 +1,31 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>pet-forge · hello-idle</title>
 <style>
   /*
-    pet-forge SVG 路线 hello-world idle 模板
+    pet-forge SVG route hello-world idle template
     ─────────────────────────────────────────
-    一个会呼吸 + 眨眼的占位圆球，证明 skill 工作流通。
-    这是起点，不是成品。用户应该把 #pet 内的造型替换成自己的角色，
-    然后调 :root 里的 CSS 变量适配自己的节奏档位。
+    A placeholder ball that breathes + blinks, proving the skill's workflow works end to end.
+    This is a starting point, not a finished product. The user should replace the shape
+    inside #pet with their own character, then tune the CSS variables in :root to fit
+    their own pacing.
 
-    自包含：内联 SVG + CSS + JS，零外部依赖。双击即跑。
+    Self-contained: inline SVG + CSS + JS, zero external dependencies. Double-click and it runs.
   */
 
   :root {
-    /* 套 apple-precise preset 的节奏档位（详见 routes/svg/presets/apple-precise.md） */
-    --breath-period: 4.8s;       /* 呼吸周期：4-8s 缓周期 */
-    --breath-min: 0.97;          /* 呼吸最小缩放 */
-    --breath-max: 1.02;          /* 呼吸最大缩放（5-10% 微妙幅度） */
+    /* Pacing tiers for the apple-precise preset (see routes/svg/presets/apple-precise.md) */
+    --breath-period: 4.8s;       /* breathing period: 4-8s slow cycle */
+    --breath-min: 0.97;          /* breathing minimum scale */
+    --breath-max: 1.02;          /* breathing maximum scale (5-10% subtle amplitude) */
 
-    --blink-min-gap: 3000;       /* 眨眼最小间隔 ms */
-    --blink-max-gap: 7000;       /* 眨眼最大间隔 ms */
-    --blink-duration: 150;       /* 单次眨眼时长 ms */
+    --blink-min-gap: 3000;       /* minimum blink interval, ms */
+    --blink-max-gap: 7000;       /* maximum blink interval, ms */
+    --blink-duration: 150;       /* duration of a single blink, ms */
 
-    /* 视觉锚点：用户应该改这些颜色适配自己的角色 */
+    /* Visual anchors: the user should change these colors to fit their character */
     --pet-fill: #F5F6FA;
     --pet-stroke: #B8C0CC;
     --eye-color: #5B6BCB;
@@ -47,8 +48,9 @@
     display: block;
   }
 
-  /* 呼吸：整体缩放循环
-     pivot 在中心。transform-origin 是关键，错了就会整体漂移。 */
+  /* Breathing: a whole-body scale loop.
+     Pivot at the center. transform-origin is the key thing here — get it wrong
+     and the whole thing will drift. */
   #pet {
     transform-origin: 100px 100px;
     animation: breathe var(--breath-period) ease-in-out infinite;
@@ -60,9 +62,9 @@
     100% { transform: scale(var(--breath-min)); }
   }
 
-  /* 眨眼：scaleY 压扁
-     用 CSS class 切换，由 JS 在随机间隔触发。
-     pivot 锚在眼睛中心，避免眼睛压扁时位置漂移。 */
+  /* Blinking: a scaleY squash.
+     Toggled via a CSS class, triggered by JS at a random interval.
+     The pivot is anchored at the eye's center, to avoid positional drift when it squashes. */
   .eye {
     transform-box: fill-box;
     transform-origin: center;
@@ -72,7 +74,7 @@
     transform: scaleY(0.05);
   }
 
-  /* 顶部说明文字 */
+  /* Hint text at the top */
   #hint {
     position: fixed;
     top: 16px;
@@ -86,20 +88,21 @@
 </head>
 <body>
 
-<div id="hint">pet-forge · hello-idle · 替换 #pet 里的造型即可上手</div>
+<div id="hint">pet-forge · hello-idle · replace the shape inside #pet to get started</div>
 
 <svg id="stage" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
   <!--
-    用户起手点：把 #pet 里的内容换成自己的角色 SVG（从 png2svg 流水线出来的成品）。
-    保留 transform-origin 在 100,100，眨眼用 .eye class 标记。
+    The user's starting point: replace the content inside #pet with your own character's
+    SVG (the output of the png2svg pipeline). Keep transform-origin at 100,100, and mark
+    the eyes with the .eye class for blinking.
   -->
   <g id="pet">
-    <!-- 主体：一个简单的圆 -->
+    <!-- Main body: a simple circle -->
     <circle cx="100" cy="100" r="65"
             fill="var(--pet-fill)"
             stroke="var(--pet-stroke)" stroke-width="2.5"/>
 
-    <!-- 双眼：左 / 右 -->
+    <!-- Both eyes: left / right -->
     <circle class="eye" cx="80" cy="95" r="6" fill="var(--eye-color)"/>
     <circle class="eye" cx="120" cy="95" r="6" fill="var(--eye-color)"/>
   </g>
@@ -107,11 +110,11 @@
 
 <script>
   /*
-    眨眼调度：随机间隔 + 偶尔双连眨
+    Blink scheduling: a random interval + an occasional double-blink
     ───────────────────────────────
-    单次眨眼 = 加 .blink → 等 duration → 去掉
-    随机间隔 = blink-min-gap 到 blink-max-gap 之间
-    10% 概率双连眨（更生动，不要规律性循环）
+    A single blink = add .blink → wait `duration` → remove it
+    Random interval = somewhere between blink-min-gap and blink-max-gap
+    10% chance of a double-blink (more lively, avoids a regular-feeling loop)
   */
   const eyes = document.querySelectorAll('.eye');
   const root = getComputedStyle(document.documentElement);
@@ -128,7 +131,7 @@
     const gap = minGap + Math.random() * (maxGap - minGap);
     setTimeout(() => {
       blinkOnce();
-      // 10% 概率双连眨
+      // 10% chance of a double-blink
       if (Math.random() < 0.1) {
         setTimeout(blinkOnce, blinkMs + 120);
       }

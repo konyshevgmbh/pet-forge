@@ -1,128 +1,128 @@
-# 自包含单文件范式
+# The self-contained single-file paradigm
 
-> SVG 路线的工程承诺：**一个 `.svg.html` = 完整可运行桌宠动画**。零外部依赖、零构建步骤、双击即跑。
+> The SVG route's engineering promise: **one `.svg.html` = a complete, runnable desktop pet animation**. Zero external dependencies, zero build step, double-click and it runs.
 
 ---
 
-## 范式定义
+## Paradigm definition
 
-每个状态文件长这样：
+Every state file looks like this:
 
 ```html
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>状态名</title>
+  <title>state name</title>
   <style>
-    /* 内联 CSS，不引外部 .css */
+    /* inline CSS, no external .css */
   </style>
 </head>
 <body>
   <svg viewBox="...">
-    <!-- 内联 SVG -->
+    <!-- inline SVG -->
   </svg>
   <script>
-    /* 内联 JS，不引外部 .js */
+    /* inline JS, no external .js */
   </script>
 </body>
 </html>
 ```
 
-**没有**：
-- ❌ `<link rel="stylesheet">` 引外部 CSS
-- ❌ `<script src="...">` 引外部 JS
-- ❌ `import` / `require` / npm 依赖
-- ❌ 构建步骤（webpack / vite / parcel）
-- ❌ Server / 后端
+**No**:
+- ❌ `<link rel="stylesheet">` pulling in external CSS
+- ❌ `<script src="...">` pulling in external JS
+- ❌ `import` / `require` / npm dependencies
+- ❌ A build step (webpack / vite / parcel)
+- ❌ A server / backend
 
-**有**：
-- ✅ 内联 `<style>`
-- ✅ 内联 `<script>`
-- ✅ 内联 SVG（不是 `<img src="x.svg">`）
-
----
-
-## 为什么这么严格
-
-1. **双击即跑**：用户拿到一个文件，浏览器打开就看到动画。零部署成本。
-2. **改一改，刷一刷**：改完保存，浏览器刷新就生效。无构建反馈循环。
-3. **可分享**：发给朋友 = 发一个文件。不用 zip、不用建仓库。
-4. **运行时友好**：Electron / Tauri / WebView 等桌宠 runtime 加载单文件最简单。
-5. **AI 友好**：AI 助手一次性看完整个状态，比跨多文件追代码快得多。
-6. **诊断简单**：动画不对劲，打开文件看 DOM + console，不需要 source map。
+**Yes**:
+- ✅ Inline `<style>`
+- ✅ Inline `<script>`
+- ✅ Inline SVG (not `<img src="x.svg">`)
 
 ---
 
-## 文件命名约定
+## Why be this strict
 
-### 状态文件
+1. **Double-click and it runs**: the user gets one file, opens it in a browser, and sees the animation. Zero deployment cost.
+2. **Edit and refresh**: save your edit, refresh the browser, it takes effect. No build feedback loop.
+3. **Shareable**: sending it to a friend = sending one file. No zipping, no setting up a repo.
+4. **Runtime-friendly**: desktop pet runtimes like Electron / Tauri / WebView find a single file the simplest thing to load.
+5. **AI-friendly**: an AI assistant can see the whole state in one pass, much faster than chasing code across multiple files.
+6. **Easy to diagnose**: if the animation looks off, open the file and check the DOM + console — no source maps needed.
 
-格式：**`<状态名>-<方向>-v<N>.svg.html`**
+---
+
+## File naming convention
+
+### State files
+
+Format: **`<state-name>-<direction>-v<N>.svg.html`**
 
 ```
-idle-eye-follow-v1.svg.html       ← idle 状态、眼睛跟随方向、第 1 版
-idle-breathing-v1.svg.html        ← idle 状态、呼吸方向、第 1 版（不同方向，平起平坐）
-idle-eye-follow-v2.svg.html       ← v1 之后的方向迭代
-typing-stroke-symbols-v4.svg.html ← typing 状态、描边代码符号方向、第 4 版
+idle-eye-follow-v1.svg.html       ← idle state, eye-follow direction, version 1
+idle-breathing-v1.svg.html        ← idle state, breathing direction, version 1 (a different direction, on equal footing)
+idle-eye-follow-v2.svg.html       ← a direction iteration after v1
+typing-stroke-symbols-v4.svg.html ← typing state, stroked-code-symbols direction, version 4
 ```
 
-**v1 / v2 / v3 是方向迭代，不是修补丁**：
-- v2 不是 "v1 的 bugfix"，是 "v1 试了之后发现方向不对，换了个新方向"
-- 同一方向小修小补，直接覆盖原文件
-- 真要保存修补节点，用 `-tuned` / `-final` / `-backup-before-merge` 后缀
+**v1 / v2 / v3 are direction iterations, not patches**:
+- v2 is not "a bugfix for v1," it's "v1 was tried, the direction turned out wrong, and a new direction was picked"
+- Small fixes within the same direction overwrite the original file directly
+- If you genuinely need to save a patch checkpoint, use a `-tuned` / `-final` / `-backup-before-merge` suffix
 
-### 锁定/归档
+### Locking/archiving
 
 ```
-confirmed/states/<state>-<approach>-vN.svg.html   ← 当前推荐版本（链接）
-_archive/<state>-跑偏方向.svg.html                ← 已废弃但保留追溯
-_locked-backups/<state>-vN-backup-2026-MM-DD.svg.html  ← 锁定前的版本备份
+confirmed/states/<state>-<approach>-vN.svg.html   ← the currently recommended version (the link)
+_archive/<state>-off-track-direction.svg.html     ← deprecated but kept for traceability
+_locked-backups/<state>-vN-backup-2026-MM-DD.svg.html  ← backup of the version right before locking
 ```
 
-**跑偏方向不删**，归档进 `_archive/`。理由：
-- 后续磨制可能想"绕回去看看那条路是不是真的死胡同"
-- 跑偏的具体原因是元教训源头，删了就丢了
+**Off-track directions aren't deleted**, they're archived into `_archive/`. Reasons:
+- Later polishing might want to "circle back and check whether that path was really a dead end"
+- The specific reasons for going off track are the source of meta-lessons — delete them and they're gone
 
 ---
 
-## 跨状态共用资产怎么办（看似违反单文件原则）
+## What to do about assets shared across states (seemingly against the single-file principle)
 
-桌宠多状态会有共用资产：眼形库、嘴形库、纸飞机、帽子、眼罩...
+A multi-state desktop pet will have shared assets: an eye-shape library, a mouth-shape library, a paper airplane, a hat, an eye patch...
 
-**做法**：每个状态文件**内联复制**共用资产，**不**通过 `<use href="...">` 跨文件引用。
+**Approach**: every state file **inlines a copy** of the shared asset, and does **not** reference it across files via `<use href="...">`.
 
-理由：
-- `<use href="external.svg">` 破坏自包含
-- 复制成本低（几十行代码），收益大（仍然双击即跑）
-- 共用资产真改了，搜替换批量改，不影响范式
+Reasons:
+- `<use href="external.svg">` breaks self-containment
+- Copying is cheap (a few dozen lines of code), the payoff is large (still double-click and it runs)
+- If a shared asset genuinely changes, do a bulk find-and-replace — it doesn't break the paradigm
 
-但**库文件**（`library/`）保留作为**源头参考**：
-- `library/eye-shapes.svg` 是源头，维护者和 AI 助手改这里
-- 状态文件从 library 复制粘贴最新版本进去
-- 库文件本身也是 svg.html 形式，可以单独打开看
-
----
-
-## 启动模板
-
-`routes/svg/templates/hello-idle.svg.html` 是**最小起点**：
-
-- 一个圆球角色 + 呼吸 + 眨眼
-- 套 apple-precise preset 默认值
-- 带详细注释解释每个 CSS 变量
-- ~150 行整个文件
-
-用户复制一份重命名成自己的状态名，改 `<g id="pet">` 内的造型，就开始了。
+But **library files** (`library/`) are kept as a **source of truth**:
+- `library/eye-shapes.svg` is the source; the maintainer and AI assistant edit it here
+- State files copy-paste the latest version in from the library
+- The library file itself is also in svg.html form, so it can be opened and viewed on its own
 
 ---
 
-## 反面：什么情况下 break 范式
+## Starter template
 
-只有一个情况：**多个角色共用一份动画引擎**（比如同一个 idle 给 5 个角色用，引擎相同造型不同）。
+`routes/svg/templates/hello-idle.svg.html` is the **minimal starting point**:
 
-这时可以：
-- 共用引擎抽到 `engine.js` 单独维护
-- 每个角色文件还是 svg.html，但 `<script>` 用 `import` 拉引擎
+- A round-ball character + breathing + blinking
+- Uses the apple-precise preset's default values
+- Has detailed comments explaining every CSS variable
+- The whole file is ~150 lines
 
-**但 pet-forge 第一版不支持这个**。一上来就走标准单文件，不要为"未来可能"留口子。
+The user copies it, renames it to their own state name, edits the shape inside `<g id="pet">`, and they're off.
+
+---
+
+## The exception: when it's OK to break the paradigm
+
+There's only one case: **multiple characters sharing one animation engine** (e.g. the same idle used by 5 characters, same engine, different shapes).
+
+In that case you can:
+- Extract the shared engine into `engine.js`, maintained separately
+- Each character file is still svg.html, but its `<script>` uses `import` to pull in the engine
+
+**But pet-forge's first version doesn't support this.** Go with the standard single-file approach from the start — don't leave a hook open for "might need it someday."
