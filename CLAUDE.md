@@ -12,7 +12,7 @@ Output: self-contained `.svg.html` files.
 
 - Local vector workflow: reference image -> background removal -> PNG to SVG -> preset/template -> CSS/JS animation.
 - Best for precise loops, low file size, and hand-tuned animation.
-- Main folders: `routes/svg/presets`, `routes/svg/templates`, `routes/svg/conventions`, `routes/svg/tools/png2svg`.
+- Main folders: `routes/svg/presets`, `routes/svg/templates`, `routes/svg/conventions`, `routes/svg/tools/png2svg`, `routes/svg/tools/spritesheet-export`.
 
 ### APNG Route
 
@@ -51,7 +51,7 @@ The toolkit does:
 
 - `README.md`: public user entry.
 - `SKILL.md`: skill trigger and workflow guidance.
-- `routes/svg/`: SVG presets, template, conventions, lessons, and `png2svg`.
+- `routes/svg/`: SVG presets, template, conventions, lessons, `png2svg`, and `spritesheet-export` (spritesheet/APNG/standalone-SVG export from locked `.svg.html` states, with scale-consistency and cross-state alignment fixes — see `routes/svg/conventions/spritesheet-export.md`).
 - `routes/apng/`: prompt template, APNG workflow docs, lessons, and tools.
 - `shared/`: route-independent state map and lessons.
 - `examples/`: public-safe case-study notes.

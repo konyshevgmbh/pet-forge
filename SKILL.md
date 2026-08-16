@@ -214,6 +214,10 @@ Look up docs based on what the user is asking:
 | "How do I validate an SVG state" | routes/svg/conventions/validation-runbook.md |
 | "What is a preset / how do I use one" | routes/svg/presets/<preset>.md |
 | "How do I convert a PNG to SVG" | routes/svg/tools/png2svg/README.md |
+| "How do I export to spritesheet/APNG/standalone SVG for an engine that can't run .svg.html / Godot / LibGDX / Starling / Phaser / Flutter" | routes/svg/conventions/spritesheet-export.md + routes/svg/tools/spritesheet-export/README.md |
+| "Character looks a different size in different exported states / scale isn't consistent across states" | routes/svg/conventions/spritesheet-export.md §1 |
+| "Two states' frames don't line up / how do I align spritesheet frames across states / what are frameX/frameY/frameWidth/frameHeight" | routes/svg/conventions/spritesheet-export.md §2 |
+| "Spritesheet export is slow / how do I speed up headless-browser capture" | routes/svg/conventions/spritesheet-export.md §3 |
 | "How do I write an AI generation prompt" | routes/apng/conventions/workflow.md + routes/apng/prompts/template.js |
 | "Common AI video generation failures" | routes/apng/lessons/pitfalls.md |
 | "Failed reruns / API rate limits" | routes/apng/lessons/pitfalls.md |
